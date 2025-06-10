@@ -1,24 +1,73 @@
 ---
-- name: List VMs
+- name: VM Migration Plan with Predefined NetworkMap and StorageMap
   hosts: localhost
-  connection: local
   gather_facts: false
   vars:
     vcenter_hostname: "10.60.38.189"
     vcenter_username: "vcenter.testing@ngcs-lab.local"
     vcenter_password: "tyv-XFZ1ehb0wcy!tdw"
-    validate_certs: false
+
+    mtv_namespace: "openshift-mtv"
+    source_provider_name: "vmware"
+    destination_provider_name: "host"
+
+    selected_vm_id: "vm-30730"
+    selected_vm_name: "rhel-9"
+
+    # Pre-created mappings
+    network_map_name: "vmware-d49vh"
+    storage_map_name: "vmware-5n78s"
 
   tasks:
-    - name: Get list of all VMs
+
+    - name: Get list of all VMs in vCenter
       vmware.vmware_rest.vcenter_vm_info:
         vcenter_hostname: "{{ vcenter_hostname }}"
         vcenter_username: "{{ vcenter_username }}"
         vcenter_password: "{{ vcenter_password }}"
-        vcenter_validate_certs: "{{ validate_certs }}"
-      register: vm_info
+        vcenter_validate_certs: false
+      register: vm_list
 
-    - name: Display VMs
+    - name: Print VM Name and VM ID
       ansible.builtin.debug:
-        msg: "{{ item.name }}"
-      loop: "{{ vm_info.value }}"
+        msg: "VM Name: {{ item.name }} | VM ID: {{ item.vm }}"
+      loop: "{{ vm_list.value }}"
+
+    - name: Create Migration Plan using existing NetworkMap and StorageMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: Plan 
+          metadata:
+            name: "{{ selected_vm_name }}-migration-plan"
+            namespace: "{{ mtv_namespace }}"
+          spec:
+            provider:
+              source:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider  
+                name: "{{ source_provider_name }}"
+                namespace: "{{ mtv_namespace }}" 
+              destination:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider  
+                name: "{{ destination_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
+            map:
+              network:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: NetworkMap    
+                name: "{{ network_map_name }}"
+                namespace: "{{ mtv_namespace }}"
+              storage:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: StorageMap
+                name: "{{ storage_map_name }}"
+                namespace: "{{ mtv_namespace }}"  
+            namespace: "{{ mtv_namespace }}"
+            targetNamespace: "{{ mtv_namespace }}"    
+            vms: 
+              - id: "{{ selected_vm_id }}"
+                name: "{{ selected_vm_name }}" 
+            warm: true
