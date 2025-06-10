@@ -58,11 +58,11 @@
               target: "{{ openshift_storage }}"
           migration_type: "warm"  # cold or warm migration
   
-    - name: Create OpenShift Project for Migration
-      oc_project:
-        name: "{{ openshift_project }}"
-      register: project_create_result
-      ignore_errors: yes
+#   - name: Create OpenShift Project for Migration
+#      oc_project:
+#        name: "{{ openshift_project }}"
+#      register: project_create_result
+#      ignore_errors: yes
 
     - name: Create migration plan file
       copy:
