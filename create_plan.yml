@@ -1,8 +1,8 @@
 ---
 - hosts: localhost
-  gather_facts: no
+  gather_facts: false
   connection: local
-  become: yes
+  #become: yes
   vars:
     vmware_url: "10.60.38.189"
     vmware_username: "vcenter.testing@ngcs-lab.local"
