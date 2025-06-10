@@ -1,9 +1,10 @@
 ---
 - hosts: localhost
   gather_facts: no
+  connection: local
   become: yes
   vars:
-    vmware_url: "ire-lab1-vc02.dtcp.local"
+    vmware_url: "10.60.38.189"
     vmware_username: "vcenter.testing@ngcs-lab.local"
     vmware_password: "tyv-XFZ1ehb0wcy!tdw"
     validate_certs: "false"
