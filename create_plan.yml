@@ -70,3 +70,15 @@
     - name: Display migration plan
       debug:
         msg: "Migration plan saved to /tmp/{{ migration_plan.name }}_plan.yaml"
+        
+    - name: Read migration plan content
+      slurp:
+        src: "/tmp/{{ migration_plan.name }}_plan.yaml"
+      register: migration_plan_content
+
+    - name: Display migration plan content and file path
+      debug:
+        msg: |
+          File path: /tmp/{{ migration_plan.name }}_plan.yaml
+          File content:
+          {{ migration_plan_content.content | b64decode }}
