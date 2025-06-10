@@ -12,19 +12,33 @@
     openshift_network_name: "nad"
     vmware_datastores: "vSAN-Datastore"
     openshift_storage: "lvms-vg1"
+    validate_certs: false
   
   tasks:
-    - name: Gather VMware VM details
-      community.vmware.vmware_vm_info:
-        hostname: "{{ vmware_url }}"
-        username: "{{ vmware_username }}"
-        password: "{{ vmware_password }}"
-        validate_certs: no
+    - name: Get list of all VMs
+      vmware.vmware_rest.vcenter_vm_info:
+        vcenter_hostname: "{{ vmware_url }}"
+        vcenter_username: "{{ vmware_username }}"
+        vcenter_password: "{{ vmware_password }}"
+        vcenter_validate_certs: "{{ validate_certs }}"
       register: vm_info
+
+    - name: Display VMs
+      ansible.builtin.debug:
+        msg: "{{ item.name }}"
+      loop: "{{ vm_info.value }}" 
+
+#    - name: Gather VMware VM details
+#      community.vmware.vmware_vm_info:
+#        hostname: "{{ vmware_url }}"
+#        username: "{{ vmware_username }}"
+#        password: "{{ vmware_password }}"
+#        validate_certs: no
+#      register: vm_info
     
-    - name: Display gathered VMware VM information
-      debug:
-        msg: "VM details: {{ vm_info.virtual_machines }}"
+#    - name: Display gathered VMware VM information
+#      debug:
+#        msg: "VM details: {{ vm_info.virtual_machines }}"
 
     - name: Prepare migration plan data
       set_fact:
