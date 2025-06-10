@@ -71,14 +71,20 @@
       debug:
         msg: "Migration plan saved to /tmp/{{ migration_plan.name }}_plan.yaml"
         
-    - name: Read migration plan content
-      slurp:
-        src: "/tmp/{{ migration_plan.name }}_plan.yaml"
-      register: migration_plan_content
-
-    - name: Display migration plan content and file path
-      debug:
-        msg: |
-          File path: /tmp/{{ migration_plan.name }}_plan.yaml
-          File content:
-          {{ migration_plan_content.content | b64decode }}
+    - name: Create migration plan
+      openshift_migration_plan:
+        name: "vmware-to-openshift-migration"
+        source_type: "vmware"
+        source_url: "{{ vmware_url }}"
+        source_username: "{{ vmware_username }}"
+        source_password: "{{ vmware_password }}"
+        target_project: "{{ openshift_project }}"
+        vm_name: "{{ vm_name }}"
+        network_mappings:
+          - source: "{{ vmware_network_name }}"
+            target: "{{ openshift_network_name }}"
+        storage_mappings:
+          - source: "{{ vmware_datastores }}"
+            target: "{{ openshift_storage }}"
+        migration_type: "warm"  # cold or warm migration
+      register: migration_plan
