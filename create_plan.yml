@@ -2,22 +2,74 @@
 - hosts: localhost
   gather_facts: no
   become: yes
-
+  vars:
+    vmware_url: "ire-lab1-vc02.dtcp.local"
+    vmware_username: "vcenter.testing@ngcs-lab.local"
+    vmware_password: "tyv-XFZ1ehb0wcy!tdw"
+    openshift_project: "openshift-mtv"
+    vm_name: "rhel-9"
+    vmware_network_name: "CPMS-External"
+    openshift_network_name: "nad"
+    vmware_datastores: "vSAN-Datastore"
+    openshift_storage: "lvms-vg1"
+  
   tasks:
-    - name: Create migration plan
-      openshift_migration_plan:
-        name: "vmware-to-openshift-migration"
-        source_type: "vmware"
-        source_url: "ire-lab1-vc02.dtcp.local"
-        source_username: "vcenter.testing@ngcs-lab.local"
-        source_password: "tyv-XFZ1ehb0wcy!tdw"
-        target_project: "openshift-mtv"
-        vm_name: "Win-2019"
-        network_mappings:
-          - source: "CPMS-External"
-            target: "vmware-d7tpk"
-        storage_mappings:
-          - source: "vmware_datastores"
-            target: "vmware-kf9dp"
-        migration_type: "warm"  # or "warm"
-      register: migration_plan
+    - name: Gather VMware VM details
+      community.vmware.vmware_vm_info:
+        hostname: "{{ vmware_url }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: no
+      register: vm_info
+    
+    - name: Display gathered VMware VM information
+      debug:
+        msg: "VM details: {{ vm_info.virtual_machines }}"
+
+    - name: Prepare migration plan data
+      set_fact:
+        migration_plan:
+          name: "vmware-to-openshift-migration"
+          source_type: "vmware"
+          source_url: "{{ vmware_url }}"
+          source_username: "{{ vmware_username }}"
+          source_password: "{{ vmware_password }}"
+          target_project: "{{ openshift_project }}"
+          vm_name: "{{ vm_name }}"
+          network_mappings:
+            - source: "{{ vmware_network_name }}"
+              target: "{{ openshift_network_name }}"
+          storage_mappings:
+            - source: "{{ vmware_datastores }}"
+              target: "{{ openshift_storage }}"
+          migration_type: "warm"  # cold or warm migration
+  
+    - name: Create OpenShift Project for Migration
+      oc_project:
+        name: "{{ openshift_project }}"
+      register: project_create_result
+      ignore_errors: yes
+
+    - name: Create migration plan file
+      copy:
+        content: |
+          migration_plan:
+            name: "{{ migration_plan.name }}"
+            source_type: "{{ migration_plan.source_type }}"
+            source_url: "{{ migration_plan.source_url }}"
+            source_username: "{{ migration_plan.source_username }}"
+            source_password: "{{ migration_plan.source_password }}"
+            target_project: "{{ migration_plan.target_project }}"
+            vm_name: "{{ migration_plan.vm_name }}"
+            network_mappings:
+              - source: "{{ migration_plan.network_mappings[0].source }}"
+                target: "{{ migration_plan.network_mappings[0].target }}"
+            storage_mappings:
+              - source: "{{ migration_plan.storage_mappings[0].source }}"
+                target: "{{ migration_plan.storage_mappings[0].target }}"
+            migration_type: "{{ migration_plan.migration_type }}"
+        dest: "/tmp/{{ migration_plan.name }}_plan.yaml"
+    
+    - name: Display migration plan
+      debug:
+        msg: "Migration plan saved to /tmp/{{ migration_plan.name }}_plan.yaml"
