@@ -1,17 +1,24 @@
 ---
-- name: Get VMWare info
+- name: List VMs
   hosts: localhost
-  gather_facts: no
+  connection: local
+  gather_facts: false
+  vars:
+    vcenter_hostname: "10.60.38.189"
+    vcenter_username: "vcenter.testing@ngcs-lab.local"
+    vcenter_password: "tyv-XFZ1ehb0wcy!tdw"
+    validate_certs: false
+
   tasks:
-    - name: Cather vcenter info
-      community.vmware.vmware_about_info:
-        vcenter_hostname: '{{ vcenter_hostname }}'
-        vcenter_username: '{{ vcenter_username }}'
-        vcenter_password: '{{ vcenter_password }}'
-        vcenter_validate_certs: false
-      delegate_to: localhost
-      register: vcenter_about_info
- 
-    - name: Print gathered info
+    - name: Get list of all VMs
+      vmware.vmware_rest.vcenter_vm_info:
+        vcenter_hostname: "{{ vcenter_hostname }}"
+        vcenter_username: "{{ vcenter_username }}"
+        vcenter_password: "{{ vcenter_password }}"
+        vcenter_validate_certs: "{{ validate_certs }}"
+      register: vm_info
+
+    - name: Display VMs
       ansible.builtin.debug:
-        var: vcenter_about_info
+        msg: "{{ item.name }}"
+      loop: "{{ vm_info.value }}"
