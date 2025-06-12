@@ -1,90 +1,28 @@
----
-- hosts: localhost
-  gather_facts: false
-  connection: local
-  #become: yes
-  vars:
-    vmware_url: "10.60.38.189"
-    vmware_username: "vcenter.testing@ngcs-lab.local"
-    vmware_password: "tyv-XFZ1ehb0wcy!tdw"
-    validate_certs: "false"
-    openshift_project: "openshift-mtv"
-    vm_name: "rhel-9"
-    vmware_network_name: "CPMS-External"
-    openshift_network_name: "nad"
-    vmware_datastores: "vSAN-Datastore"
-    openshift_storage: "lvms-vg1"
-  
-  tasks:
-    - name: Get list of all VMs
-      vmware.vmware_rest.vcenter_vm_info:
-        vcenter_hostname: "{{ vmware_url }}"
-        vcenter_username: "{{ vmware_username }}"
-        vcenter_password: "{{ vmware_password }}"
-        vcenter_validate_certs: "{{ validate_certs }}"
-      register: vm_info
-    
-    - name: Display VMs
-      ansible.builtin.debug:
-        msg: "{{ item.name }}"
-      loop: "{{ vm_info.value }}"
-
-    - name: Prepare migration plan data
-      set_fact:
-        migration_plan:
-          name: "vmware-to-openshift-migration"
-          source_type: "vmware"
-          source_url: "{{ vmware_url }}"
-          source_username: "{{ vmware_username }}"
-          source_password: "{{ vmware_password }}"
-          target_project: "{{ openshift_project }}"
-          vm_name: "{{ vm_name }}"
-          network_mappings:
-            - source: "{{ vmware_network_name }}"
-              target: "{{ openshift_network_name }}"
-          storage_mappings:
-            - source: "{{ vmware_datastores }}"
-              target: "{{ openshift_storage }}"
-          migration_type: "warm"  # cold or warm migration
-
-    - name: Create migration plan file
-      copy:
-        content: |
-          migration_plan:
-            name: "{{ migration_plan.name }}"
-            source_type: "{{ migration_plan.source_type }}"
-            source_url: "{{ migration_plan.source_url }}"
-            source_username: "{{ migration_plan.source_username }}"
-            source_password: "{{ migration_plan.source_password }}"
-            target_project: "{{ migration_plan.target_project }}"
-            vm_name: "{{ migration_plan.vm_name }}"
-            network_mappings:
-              - source: "{{ migration_plan.network_mappings[0].source }}"
-                target: "{{ migration_plan.network_mappings[0].target }}"
-            storage_mappings:
-              - source: "{{ migration_plan.storage_mappings[0].source }}"
-                target: "{{ migration_plan.storage_mappings[0].target }}"
-            migration_type: "{{ migration_plan.migration_type }}"
-        dest: "/tmp/{{ migration_plan.name }}_plan.yaml"
-    
-    - name: Display migration plan
-      debug:
-        msg: "Migration plan saved to /tmp/{{ migration_plan.name }}_plan.yaml"
-        
-    - name: Create migration plan
-      openshift_migration_plan:
-        name: "vmware-to-openshift-migration"
-        source_type: "vmware"
-        source_url: "{{ vmware_url }}"
-        source_username: "{{ vmware_username }}"
-        source_password: "{{ vmware_password }}"
-        target_project: "{{ openshift_project }}"
-        vm_name: "{{ vm_name }}"
-        network_mappings:
-          - source: "{{ vmware_network_name }}"
-            target: "{{ openshift_network_name }}"
-        storage_mappings:
-          - source: "{{ vmware_datastores }}"
-            target: "{{ openshift_storage }}"
-        migration_type: "warm"  # cold or warm migration
-      register: migration_plan
+apiVersion: forklift.konveyor.io/v1beta1
+kind: Plan
+metadata:
+  name: test-4
+  namespace: openshift-mtv
+spec:
+  archived: false
+  description: ""
+  map:
+    network:
+      name: vmware-d49vh
+      namespace: openshift-mtv
+    storage:
+      name: vmware-5n78s
+      namespace: openshift-mtv
+  provider:
+    destination:
+      name: host
+      namespace: openshift-mtv
+    source:
+      name: vmware
+      namespace: openshift-mtv
+  targetNamespace: openshift-mtv
+  vms:
+    - name: rhel-8
+      hooks: []
+  warm: true
+  preserveStaticIPs: true
