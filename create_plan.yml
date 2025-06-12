@@ -1,28 +1,41 @@
-apiVersion: forklift.konveyor.io/v1beta1
-kind: Plan
-metadata:
-  name: test-4
-  namespace: openshift-mtv
-spec:
-  archived: false
-  description: ""
-  map:
-    network:
-      name: vmware-d49vh
-      namespace: openshift-mtv
-    storage:
-      name: vmware-5n78s
-      namespace: openshift-mtv
-  provider:
-    destination:
-      name: host
-      namespace: openshift-mtv
-    source:
-      name: vmware
-      namespace: openshift-mtv
-  targetNamespace: openshift-mtv
-  vms:
-    - name: rhel-8
-      hooks: []
-  warm: true
-  preserveStaticIPs: true
+---
+- name: Create Migration Plan in OpenShift
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Define the Plan resource YAML
+      set_fact:
+        plan_yaml: |
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: Plan
+          metadata:
+            name: test-4
+            namespace: openshift-mtv
+          spec:
+            archived: false
+            description: ""
+            map:
+              network:
+                name: vmware-d49vh
+                namespace: openshift-mtv
+              storage:
+                name: vmware-5n78s
+                namespace: openshift-mtv
+            provider:
+              destination:
+                name: host
+                namespace: openshift-mtv
+              source:
+                name: vmware
+                namespace: openshift-mtv
+            targetNamespace: openshift-mtv
+            vms:
+              - name: rhel-8
+                hooks: []
+            warm: true
+            preserveStaticIPs: true
+
+    - name: Create the Plan resource in OpenShift
+      k8s:
+        state: present
+        definition: "{{ plan_yaml }}"
