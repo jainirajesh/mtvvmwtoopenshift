@@ -1,5 +1,7 @@
 - name: Create migration plan with oc create
   hosts: localhost
+  environment:
+    KUBECONFIG: ~/.kube/config
   tasks:
     - name: Apply Forklift Plan YAML using oc
       shell: |
