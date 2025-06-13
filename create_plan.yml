@@ -1,49 +1,93 @@
-- name: Create migration plan with oc create
+- name: Create Forklift migration plan with mappings
   hosts: localhost
-  environment:
-    KUBECONFIG: ~/.kube/config
+  gather_facts: no
+
+  vars:
+    kubeconfig_path: ~/.kube/config  # Update this path
+    namespace: openshift-mtv
+    network_map_name: vmware-test-4
+    storage_map_name: vmware-test-4
+    migration_plan_name: test-4
+
   tasks:
-    - name: Apply Forklift Plan YAML using oc
-      shell: |
-        cat << EOF | oc create -f -
-        apiVersion: forklift.konveyor.io/v1beta1
-        kind: Plan
-        metadata:
-          name: plan-2
-          namespace: openshift-mtv
-        spec:
-          map:
-            network:
-              apiVersion: forklift.konveyor.io/v1beta1
-              kind: NetworkMap
-              name: vmware-8vnq5
-              namespace: openshift-mtv
-              uid: 0bcc8003-e447-408d-a991-ae6fcf3889e1
-            storage:
-              apiVersion: forklift.konveyor.io/v1beta1
-              kind: StorageMap
-              name: vmware-7j65x
-              namespace: openshift-mtv
-              uid: 55c3f468-4a2d-4586-b8dc-08509455275f
-          migrateSharedDisks: true
-          preserveStaticIPs: true
-          provider:
-            destination:
-              apiVersion: forklift.konveyor.io/v1beta1
-              kind: Provider
-              name: host
-              namespace: openshift-mtv
-              uid: cfd1b453-2705-41b9-bb3a-85fd005c3a48
-            source:
-              apiVersion: forklift.konveyor.io/v1beta1
-              kind: Provider
-              name: vmware
-              namespace: openshift-mtv
-              uid: 853a87c8-da62-48e6-9fdf-ab5f5614389a
-          pvcNameTemplateUseGenerateName: true
-          targetNamespace: openshift-mtv
-          vms:
-            - id: vm-30256
-              name: rhel-8
-          warm: true
-        EOF
+    - name: Create NetworkMap
+      copy:
+        dest: /tmp/network-map.yaml
+        content: |
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: NetworkMap
+          metadata:
+            name: "{{ network_map_name }}"
+            namespace: "{{ namespace }}"
+          spec:
+            map:
+              - source:
+                  type: vmware
+                  id: "CPMS-External"  # <-- Replace with actual VMware network ID
+                destination:
+                  type: pod
+                  namespace: "{{ namespace }}"
+                  name: "default/nad"        # <-- Replace with actual OpenShift network name
+    - name: Apply NetworkMap
+      shell: oc apply -f /tmp/network-map.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    - name: Create StorageMap
+      copy:
+        dest: /tmp/storage-map.yaml
+        content: |
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: StorageMap
+          metadata:
+            name: "{{ storage_map_name }}"
+            namespace: "{{ namespace }}"
+          spec:
+            map:
+              - source:
+                  type: vmware
+                  id: "vmware_datastores"   # <-- Replace with actual VMware datastore ID
+                destination:
+                  storageClass: "lvms-vg1"  # <-- Replace with your storage class
+    - name: Apply StorageMap
+      shell: oc apply -f /tmp/storage-map.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    - name: Create Migration Plan
+      copy:
+        dest: /tmp/migration-plan.yaml
+        content: |
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: Plan
+          metadata:
+            name: "{{ migration_plan_name }}"
+            namespace: "{{ namespace }}"
+          spec:
+            archived: false
+            description: ""
+            map:
+              network:
+                name: "{{ network_map_name }}"
+                namespace: "{{ namespace }}"
+              storage:
+                name: "{{ storage_map_name }}"
+                namespace: "{{ namespace }}"
+            provider:
+              destination:
+                name: host
+                namespace: "{{ namespace }}"
+              source:
+                name: vmware
+                namespace: "{{ namespace }}"
+            targetNamespace: "{{ namespace }}"
+            vms:
+              - name: rhel-8
+                hooks: []
+            warm: true
+            preserveStaticIPs: true
+			migrateSharedDisks: true
+    - name: Apply Migration Plan
+      shell: oc apply -f /tmp/migration-plan.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
