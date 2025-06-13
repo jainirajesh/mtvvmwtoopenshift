@@ -3,7 +3,7 @@
   gather_facts: no
 
   vars:
-    kubeconfig_path: ~/.kube/config  # Update this path
+    kubeconfig_path: "{{ lookup('env', 'HOME') }}/.kube/config"
     namespace: openshift-mtv
     network_map_name: vmware-test-4
     storage_map_name: vmware-test-4
@@ -27,7 +27,7 @@
                 destination:
                   type: pod
                   namespace: "{{ namespace }}"
-                  name: "default/nad"        # <-- Replace with actual OpenShift network name
+                  name: "nad"  # <-- Replace with actual NAD name
     - name: Apply NetworkMap
       shell: oc apply -f /tmp/network-map.yaml
       environment:
@@ -86,7 +86,8 @@
                 hooks: []
             warm: true
             preserveStaticIPs: true
-			migrateSharedDisks: true
+            migrateSharedDisks: true
+
     - name: Apply Migration Plan
       shell: oc apply -f /tmp/migration-plan.yaml
       environment:
