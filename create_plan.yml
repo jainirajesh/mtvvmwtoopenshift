@@ -1,41 +1,47 @@
----
-- name: Create Migration Plan in OpenShift
+- name: Create migration plan with oc create
   hosts: localhost
-  gather_facts: no
   tasks:
-    - name: Define the Plan resource YAML
-      set_fact:
-        plan_yaml: |
-          apiVersion: forklift.konveyor.io/v1beta1
-          kind: Plan
-          metadata:
-            name: test-4
-            namespace: openshift-mtv
-          spec:
-            archived: false
-            description: ""
-            map:
-              network:
-                name: vmware-d49vh
-                namespace: openshift-mtv
-              storage:
-                name: vmware-5n78s
-                namespace: openshift-mtv
-            provider:
-              destination:
-                name: host
-                namespace: openshift-mtv
-              source:
-                name: vmware
-                namespace: openshift-mtv
-            targetNamespace: openshift-mtv
-            vms:
-              - name: rhel-8
-                hooks: []
-            warm: true
-            preserveStaticIPs: true
-
-    - name: Create the Plan resource in OpenShift
-      k8s:
-        state: present
-        definition: "{{ plan_yaml }}"
+    - name: Apply Forklift Plan YAML using oc
+      shell: |
+        cat << EOF | oc create -f -
+        apiVersion: forklift.konveyor.io/v1beta1
+        kind: Plan
+        metadata:
+          name: plan-2
+          namespace: openshift-mtv
+        spec:
+          map:
+            network:
+              apiVersion: forklift.konveyor.io/v1beta1
+              kind: NetworkMap
+              name: vmware-8vnq5
+              namespace: openshift-mtv
+              uid: 0bcc8003-e447-408d-a991-ae6fcf3889e1
+            storage:
+              apiVersion: forklift.konveyor.io/v1beta1
+              kind: StorageMap
+              name: vmware-7j65x
+              namespace: openshift-mtv
+              uid: 55c3f468-4a2d-4586-b8dc-08509455275f
+          migrateSharedDisks: true
+          preserveStaticIPs: true
+          provider:
+            destination:
+              apiVersion: forklift.konveyor.io/v1beta1
+              kind: Provider
+              name: host
+              namespace: openshift-mtv
+              uid: cfd1b453-2705-41b9-bb3a-85fd005c3a48
+            source:
+              apiVersion: forklift.konveyor.io/v1beta1
+              kind: Provider
+              name: vmware
+              namespace: openshift-mtv
+              uid: 853a87c8-da62-48e6-9fdf-ab5f5614389a
+          pvcNameTemplateUseGenerateName: true
+          targetNamespace: openshift-mtv
+          vms:
+            - id: vm-30256
+              name: rhel-8
+          warm: true
+        EOF
