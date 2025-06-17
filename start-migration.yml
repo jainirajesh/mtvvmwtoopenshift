@@ -12,7 +12,7 @@
     destination_provider_name: "host"
 
     selected_vm_id: "vm-30730"
-    selected_vm_name: "rhel-9"
+    selected_vm_name: "rhel-8"
 
     network_map_name: "test-networkmap"
     storage_map_name: "test-storagemap"
@@ -26,9 +26,9 @@
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            name: rhel-9-vmware-test
+            name: rhel-8-vmware-test
             namespace: openshift-mtv
           spec:
             plan:
-              name: rhel-9-vmware-test
+              name: rhel-8-vmware-test
               namespace: openshift-mtv
