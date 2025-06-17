@@ -114,14 +114,13 @@
                 kind: Provider
                 name: "{{ destination_provider_name }}"
                 namespace: "{{ mtv_namespace }}"
-            map:
-              - source:
-                  type: vmware
-                  name: "CPMS-External"  # Replace with actual VMware network
-                destination:
-                  type: pod
-                  namespace: "{{ mtv_namespace }}"
-                  name: "default/nad"  # Replace with actual NetworkAttachmentDefinition
+                    map:
+          - destination:
+              name: default/nad
+              namespace: "{{ mtv_namespace }}"
+              type: multus
+            source:
+              id: CPMS-External
 
     - name: Create StorageMap with owner reference
       kubernetes.core.k8s:
