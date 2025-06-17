@@ -45,9 +45,13 @@
           spec:
             provider:
               source:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
                 name: "{{ source_provider_name }}"
                 namespace: "{{ mtv_namespace }}"
               destination:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
                 name: "{{ destination_provider_name }}"
                 namespace: "{{ mtv_namespace }}"
             map:
@@ -71,9 +75,13 @@
           spec:
             provider:
               source:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
                 name: "{{ source_provider_name }}"
                 namespace: "{{ mtv_namespace }}"
               destination:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
                 name: "{{ destination_provider_name }}"
                 namespace: "{{ mtv_namespace }}"
             map:
