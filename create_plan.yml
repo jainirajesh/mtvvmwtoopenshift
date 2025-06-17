@@ -113,13 +113,13 @@
                 kind: Provider
                 name: "{{ destination_provider_name }}"
                 namespace: "{{ mtv_namespace }}"
-                    map:
-          - destination:
-              name: default/nad
-              namespace: "{{ mtv_namespace }}"
-              type: multus
-            source:
-              id: CPMS-External
+            map:
+              - destination:
+                  name: default/nad
+                  namespace: "{{ mtv_namespace }}"
+                  type: multus
+                source:
+                  id: CPMS-External
 
     - name: Create StorageMap with owner reference
       kubernetes.core.k8s:
