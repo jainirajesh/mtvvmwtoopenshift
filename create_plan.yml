@@ -15,8 +15,8 @@
     selected_vm_name: "rhel-8"
 
     # Pre-created mappings
-    network_map_name: "vmware-d49vh"
-    storage_map_name: "vmware-5n78s"
+    network_map_name: "test-networkmap"
+    storage_map_name: "test-storagemap"
 
   tasks:
 
@@ -32,6 +32,64 @@
       ansible.builtin.debug:
         msg: "VM Name: {{ item.name }} | VM ID: {{ item.vm }}"
       loop: "{{ vm_list.value }}"
+      
+    - name: Create NetworkMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: NetworkMap
+          metadata:
+            name: "{{ network_map_name }}"
+            namespace: "{{ mtv_namespace }}"
+          spec:
+            provider:
+              source:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
+                name: "{{ source_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
+              destination:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
+                name: "{{ destination_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
+            map:
+              - source:
+                  type: vmware
+                  name: "CPMS-External"  # Replace with actual VMware network
+                destination:
+                  type: pod
+                  namespace: "{{ mtv_namespace }}"
+                  name: "default/nad"  # Replace with actual NetworkAttachmentDefinition
+
+    - name: Create StorageMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: StorageMap
+          metadata:
+            name: "{{ storage_map_name }}"
+            namespace: "{{ mtv_namespace }}"
+          spec:
+            provider:
+              source:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
+                name: "{{ source_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
+              destination:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
+                name: "{{ destination_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
+            map:
+              - source:
+                  type: vmware
+                  name: "vSAN-Datastore"  # Replace with actual VMware datastore
+                destination:
+                  storageClass: "lvms-vg1"  # Replace with actual OpenShift storage class
 
     - name: Create Migration Plan using existing NetworkMap and StorageMap
       kubernetes.core.k8s:
@@ -70,3 +128,4 @@
             vms: 
               - name: "{{ selected_vm_name }}" 
             warm: true
+            preserveStaticIPs: true
