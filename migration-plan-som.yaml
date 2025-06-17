@@ -12,7 +12,7 @@
     destination_provider_name: "host"
 
     selected_vm_id: "vm-30730"
-    selected_vm_name: "rhel-9"
+    selected_vm_name: "rhel-8"
 
     # Pre-created mappings
     network_map_name: "vmware-d49vh"
@@ -68,6 +68,6 @@
             namespace: "{{ mtv_namespace }}"
             targetNamespace: "{{ mtv_namespace }}"    
             vms: 
-              - id: "{{ selected_vm_id }}"
-                name: "{{ selected_vm_name }}" 
+              - name: "{{ selected_vm_name }}" 
             warm: true
+            preserveStaticIPs: true
