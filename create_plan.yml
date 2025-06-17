@@ -120,7 +120,7 @@
                   type: "multus"
                 source:
                   type: vmware
-                  id: "CPMS-External"
+                  name: "CPMS-External"
 
     - name: Create StorageMap with owner reference
       kubernetes.core.k8s:
