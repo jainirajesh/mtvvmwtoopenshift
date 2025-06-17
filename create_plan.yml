@@ -12,11 +12,11 @@
     destination_provider_name: "host"
 
     selected_vm_id: "vm-30730"
-    selected_vm_name: "rhel-9"
+    selected_vm_name: "rhel-8"
 
-    # Network and storage map name used consistently
-    network_map_name: "vmware-test-5"
-    storage_map_name: "vmware-test-5"
+    # Pre-created mappings
+    network_map_name: "vmware-d49vh"
+    storage_map_name: "vmware-5n78s"
 
   tasks:
 
@@ -38,38 +38,35 @@
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
-          kind: Plan
+          kind: Plan 
           metadata:
-            name: "{{ selected_vm_name }}-vmware-test"
+            name: "{{ selected_vm_name }}-migration-plan"
             namespace: "{{ mtv_namespace }}"
           spec:
             provider:
               source:
                 apiVersion: forklift.konveyor.io/v1beta1
-                kind: Provider
+                kind: Provider  
                 name: "{{ source_provider_name }}"
-                namespace: "{{ mtv_namespace }}"
+                namespace: "{{ mtv_namespace }}" 
               destination:
                 apiVersion: forklift.konveyor.io/v1beta1
-                kind: Provider
+                kind: Provider  
                 name: "{{ destination_provider_name }}"
                 namespace: "{{ mtv_namespace }}"
             map:
               network:
                 apiVersion: forklift.konveyor.io/v1beta1
-                kind: NetworkMap
+                kind: NetworkMap    
                 name: "{{ network_map_name }}"
                 namespace: "{{ mtv_namespace }}"
               storage:
                 apiVersion: forklift.konveyor.io/v1beta1
                 kind: StorageMap
                 name: "{{ storage_map_name }}"
-                namespace: "{{ mtv_namespace }}"
+                namespace: "{{ mtv_namespace }}"  
             namespace: "{{ mtv_namespace }}"
-            targetNamespace: "{{ mtv_namespace }}"
-            vms:
-              - id: "{{ selected_vm_id }}"
-                name: "{{ selected_vm_name }}"
+            targetNamespace: "{{ mtv_namespace }}"    
+            vms: 
+              - name: "{{ selected_vm_name }}" 
             warm: true
-            preserveStaticIPs: true
-            migrateSharedDisks: true
