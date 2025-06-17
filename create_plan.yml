@@ -72,7 +72,6 @@
                 name: "{{ selected_vm_name }}"
             warm: true
             preserveStaticIPs: true
-            migrateSharedDisks: true
 
     - name: Get Plan UID
       kubernetes.core.k8s_info:
