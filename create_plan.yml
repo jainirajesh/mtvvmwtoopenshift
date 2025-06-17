@@ -117,10 +117,9 @@
               - destination:
                   name: "nad"
                   namespace: "default"
-                  type: multus
                 source:
                   type: vmware
-                  name: "CPMS-External"
+                  id: "CPMS-External"
 
     - name: Create StorageMap with owner reference
       kubernetes.core.k8s:
