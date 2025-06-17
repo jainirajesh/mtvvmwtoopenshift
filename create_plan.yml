@@ -58,12 +58,12 @@
               network:
                 apiVersion: forklift.konveyor.io/v1beta1
                 kind: NetworkMap
-                name: "{{ network_map_name }}"
+                name: "{{ network_map_name }}-{{ plan_name }}"
                 namespace: "{{ mtv_namespace }}"
               storage:
                 apiVersion: forklift.konveyor.io/v1beta1
                 kind: StorageMap
-                name: "{{ storage_map_name }}"
+                name: "{{ storage_map_name }}-{{ plan_name }}"
                 namespace: "{{ mtv_namespace }}"
             namespace: "{{ mtv_namespace }}"
             targetNamespace: "{{ mtv_namespace }}"
@@ -92,7 +92,7 @@
           apiVersion: forklift.konveyor.io/v1beta1
           kind: NetworkMap
           metadata:
-            name: "{{ network_map_name }}"
+            name: "{{ network_map_name }}-{{ plan_name }}"
             namespace: "{{ mtv_namespace }}"
             ownerReferences:
               - apiVersion: forklift.konveyor.io/v1beta1
@@ -115,12 +115,12 @@
                 namespace: "{{ mtv_namespace }}"
             map:
               - destination:
-                  name: default/nad
+                  name: "default/nad"
                   namespace: "{{ mtv_namespace }}"
                   type: multus
                 source:
                   type: vmware
-                  name: CPMS-External
+                  name: "CPMS-External"
 
     - name: Create StorageMap with owner reference
       kubernetes.core.k8s:
@@ -129,7 +129,7 @@
           apiVersion: forklift.konveyor.io/v1beta1
           kind: StorageMap
           metadata:
-            name: "{{ storage_map_name }}"
+            name: "{{ storage_map_name }}-{{ plan_name }}"
             namespace: "{{ mtv_namespace }}"
             ownerReferences:
               - apiVersion: forklift.konveyor.io/v1beta1
