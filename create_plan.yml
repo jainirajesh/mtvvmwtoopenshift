@@ -1,94 +1,125 @@
-- name: Create Forklift migration plan with mappings
+---
+- name: VM Migration Plan with Predefined NetworkMap and StorageMap
   hosts: localhost
-  gather_facts: no
-
+  gather_facts: false
   vars:
-    kubeconfig_path: "/var/roothome/.kube/config"
-    namespace: openshift-mtv
-    network_map_name: vmware-test-4
-    storage_map_name: vmware-test-4
-    migration_plan_name: test-4
+    vcenter_hostname: "10.60.38.189"
+    vcenter_username: "vcenter.testing@ngcs-lab.local"
+    vcenter_password: "tyv-XFZ1ehb0wcy!tdw"
+
+    mtv_namespace: "openshift-mtv"
+    source_provider_name: "vmware"
+    destination_provider_name: "host"
+
+    selected_vm_id: "vm-30730"
+    selected_vm_name: "rhel-9"
+
+    # Network and storage map name used consistently
+    network_map_name: "vmware-test-5"
+    storage_map_name: "vmware-test-5"
 
   tasks:
+
+    - name: Get list of all VMs in vCenter
+      vmware.vmware_rest.vcenter_vm_info:
+        vcenter_hostname: "{{ vcenter_hostname }}"
+        vcenter_username: "{{ vcenter_username }}"
+        vcenter_password: "{{ vcenter_password }}"
+        vcenter_validate_certs: false
+      register: vm_list
+
+    - name: Print VM Name and VM ID
+      ansible.builtin.debug:
+        msg: "VM Name: {{ item.name }} | VM ID: {{ item.vm }}"
+      loop: "{{ vm_list.value }}"
+
     - name: Create NetworkMap
-      copy:
-        dest: /tmp/network-map.yaml
-        content: |
+      kubernetes.core.k8s:
+        state: present
+        definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: NetworkMap
           metadata:
             name: "{{ network_map_name }}"
-            namespace: "{{ namespace }}"
+            namespace: "{{ mtv_namespace }}"
           spec:
+            provider:
+              source:
+                name: "{{ source_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
+              destination:
+                name: "{{ destination_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
             map:
               - source:
                   type: vmware
-                  id: "CPMS-External"  # <-- Replace with actual VMware network ID
+                  name: "CPMS-External"  # Replace with actual VMware network
                 destination:
                   type: pod
-                  namespace: "{{ namespace }}"
-                  name: "nad"  # <-- Replace with actual NAD name
-    - name: Apply NetworkMap
-      shell: oc apply -f /tmp/network-map.yaml
-      environment:
-        KUBECONFIG: "{{ kubeconfig_path }}"
+                  namespace: "{{ mtv_namespace }}"
+                  name: "default/nad"  # Replace with actual NetworkAttachmentDefinition
 
     - name: Create StorageMap
-      copy:
-        dest: /tmp/storage-map.yaml
-        content: |
+      kubernetes.core.k8s:
+        state: present
+        definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: StorageMap
           metadata:
             name: "{{ storage_map_name }}"
-            namespace: "{{ namespace }}"
+            namespace: "{{ mtv_namespace }}"
           spec:
+            provider:
+              source:
+                name: "{{ source_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
+              destination:
+                name: "{{ destination_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
             map:
               - source:
                   type: vmware
-                  id: "vmware_datastores"   # <-- Replace with actual VMware datastore ID
+                  name: "vSAN-Datastore"  # Replace with actual VMware datastore
                 destination:
-                  storageClass: "lvms-vg1"  # <-- Replace with your storage class
-    - name: Apply StorageMap
-      shell: oc apply -f /tmp/storage-map.yaml
-      environment:
-        KUBECONFIG: "{{ kubeconfig_path }}"
+                  storageClass: "lvms-vg1"  # Replace with actual OpenShift storage class
 
-    - name: Create Migration Plan
-      copy:
-        dest: /tmp/migration-plan.yaml
-        content: |
+    - name: Create Migration Plan using existing NetworkMap and StorageMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Plan
           metadata:
-            name: "{{ migration_plan_name }}"
-            namespace: "{{ namespace }}"
+            name: "{{ selected_vm_name }}-vmware-test"
+            namespace: "{{ mtv_namespace }}"
           spec:
-            archived: false
-            description: ""
+            provider:
+              source:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
+                name: "{{ source_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
+              destination:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
+                name: "{{ destination_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
             map:
               network:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: NetworkMap
                 name: "{{ network_map_name }}"
-                namespace: "{{ namespace }}"
+                namespace: "{{ mtv_namespace }}"
               storage:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: StorageMap
                 name: "{{ storage_map_name }}"
-                namespace: "{{ namespace }}"
-            provider:
-              destination:
-                name: host
-                namespace: "{{ namespace }}"
-              source:
-                name: vmware
-                namespace: "{{ namespace }}"
-            targetNamespace: "{{ namespace }}"
+                namespace: "{{ mtv_namespace }}"
+            namespace: "{{ mtv_namespace }}"
+            targetNamespace: "{{ mtv_namespace }}"
             vms:
-              - name: rhel-8
-                hooks: []
+              - id: "{{ selected_vm_id }}"
+                name: "{{ selected_vm_name }}"
             warm: true
             preserveStaticIPs: true
             migrateSharedDisks: true
-
-    - name: Apply Migration Plan
-      shell: oc apply -f /tmp/migration-plan.yaml
-      environment:
-        KUBECONFIG: "{{ kubeconfig_path }}"
