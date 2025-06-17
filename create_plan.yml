@@ -119,7 +119,9 @@
                   namespace: "{{ mtv_namespace }}"
                   type: multus
                 source:
-                  id: CPMS-External
+                  type: vmware
+                  name: CPMS-External
+                  id: 10
 
     - name: Create StorageMap with owner reference
       kubernetes.core.k8s:
