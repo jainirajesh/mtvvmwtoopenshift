@@ -33,36 +33,6 @@
         msg: "VM Name: {{ item.name }} | VM ID: {{ item.vm }}"
       loop: "{{ vm_list.value }}"
 
-    - name: Create NetworkMap
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: forklift.konveyor.io/v1beta1
-          kind: NetworkMap
-          metadata:
-            name: "{{ network_map_name }}"
-            namespace: "{{ mtv_namespace }}"
-          spec:
-            provider:
-              source:
-                apiVersion: forklift.konveyor.io/v1beta1
-                kind: Provider
-                name: "{{ source_provider_name }}"
-                namespace: "{{ mtv_namespace }}"
-              destination:
-                apiVersion: forklift.konveyor.io/v1beta1
-                kind: Provider
-                name: "{{ destination_provider_name }}"
-                namespace: "{{ mtv_namespace }}"
-            map:
-              - source:
-                  type: vmware
-                  name: "CPMS-External"  # Replace with actual VMware network
-                destination:
-                  type: pod
-                  namespace: "{{ mtv_namespace }}"
-                  name: "default/nad"  # Replace with actual NetworkAttachmentDefinition
-
     - name: Create StorageMap
       kubernetes.core.k8s:
         state: present
