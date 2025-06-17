@@ -12,7 +12,7 @@
     destination_provider_name: "host"
 
     selected_vm_id: "vm-30730"
-    selected_vm_name: "rhel-9"
+    selected_vm_name: "rhel-8"
 
     network_map_name: "test-networkmap"
     storage_map_name: "test-storagemap"
@@ -68,8 +68,7 @@
             namespace: "{{ mtv_namespace }}"
             targetNamespace: "{{ mtv_namespace }}"
             vms:
-              - id: "{{ selected_vm_id }}"
-                name: "{{ selected_vm_name }}"
+              - name: "{{ selected_vm_name }}"
             warm: true
             preserveStaticIPs: true
 
