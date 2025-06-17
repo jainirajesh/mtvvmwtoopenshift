@@ -115,7 +115,7 @@
                 namespace: "{{ mtv_namespace }}"
             map:
               - destination:
-                  name: "default/nad"
+                  name: "nad"
                   namespace: "default"
                   type: multus
                 source:
