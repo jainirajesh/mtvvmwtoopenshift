@@ -117,6 +117,7 @@
               - destination:
                   name: "nad"
                   namespace: "default"
+                  type: "multus"
                 source:
                   type: vmware
                   id: "CPMS-External"
