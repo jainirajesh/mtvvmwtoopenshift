@@ -33,34 +33,6 @@
         msg: "VM Name: {{ item.name }} | VM ID: {{ item.vm }}"
       loop: "{{ vm_list.value }}"
 
-    - name: Create StorageMap
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: forklift.konveyor.io/v1beta1
-          kind: StorageMap
-          metadata:
-            name: "{{ storage_map_name }}"
-            namespace: "{{ mtv_namespace }}"
-          spec:
-            provider:
-              source:
-                apiVersion: forklift.konveyor.io/v1beta1
-                kind: Provider
-                name: "{{ source_provider_name }}"
-                namespace: "{{ mtv_namespace }}"
-              destination:
-                apiVersion: forklift.konveyor.io/v1beta1
-                kind: Provider
-                name: "{{ destination_provider_name }}"
-                namespace: "{{ mtv_namespace }}"
-            map:
-              - source:
-                  type: vmware
-                  name: "vSAN-Datastore"  # Replace with actual VMware datastore
-                destination:
-                  storageClass: "lvms-vg1"  # Replace with actual OpenShift storage class
-
     - name: Create Migration Plan using existing NetworkMap and StorageMap
       kubernetes.core.k8s:
         state: present
