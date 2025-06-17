@@ -121,7 +121,6 @@
                 source:
                   type: vmware
                   name: CPMS-External
-                  id: 10
 
     - name: Create StorageMap with owner reference
       kubernetes.core.k8s:
