@@ -26,9 +26,9 @@
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            name: test-vm8
+            name: rhel-9-vmware-test
             namespace: openshift-mtv
           spec:
             plan:
-              name: test-vm8
+              name: rhel-9-vmware-test
               namespace: openshift-mtv
