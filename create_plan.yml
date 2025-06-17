@@ -116,7 +116,7 @@
             map:
               - destination:
                   name: "default/nad"
-                  namespace: "{{ mtv_namespace }}"
+                  namespace: "default"
                   type: multus
                 source:
                   type: vmware
