@@ -15,7 +15,7 @@
 
     - name: Decode CSV lines
       ansible.builtin.set_fact:
-        csv_lines: "{{ raw_csv.content | b64decode | splitlines() }}"
+        csv_lines: "{{ raw_csv.content | b64decode | split('\n') | reject('equalto', '') | list }}"
 
     - name: Extract header and VM data
       ansible.builtin.set_fact:
