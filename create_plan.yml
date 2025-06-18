@@ -7,7 +7,7 @@
     - vars.yaml
 
   vars:
-    csv_local_path: "/runner/project/migration_plan.csv"  # AAP-specific fixed path
+    csv_local_path: "./migration_plan.csv"  # AAP-specific fixed path
 
   tasks:
 
