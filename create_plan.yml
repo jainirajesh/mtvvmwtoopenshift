@@ -32,7 +32,7 @@
             {% for i in range(csv_header | length) %}
               {% set _ = item.update({ (csv_header[i] | trim): (values[i] | trim) }) %}
             {% endfor %}
-            {% do result.append(item) %}
+            {% set result = result + [item] %}
           {% endfor %}
           {{ result }}
 
