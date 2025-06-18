@@ -1,0 +1,16 @@
+---
+- name: Load and process migration plan
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    csv_path: migration_plan.csv
+
+  tasks:
+    - name: Read CSV content into list of dicts
+      set_fact:
+        migration_data: "{{ lookup('community.general.read_csv', csv_path) }}"
+
+    - name: Debug output
+      debug:
+        var: migration_data
