@@ -13,7 +13,7 @@
         src: migration_plan.csv
       register: raw_csv
 
-    - name: Decode CSV lines (remove empty lines)
+    - name: Decode CSV lines and remove empty lines
       ansible.builtin.set_fact:
         csv_lines: "{{ raw_csv.content | b64decode | split('\n') | reject('equalto', '') | list }}"
 
@@ -22,14 +22,13 @@
         csv_header: "{{ csv_lines[0].split(',') }}"
         csv_rows: "{{ csv_lines[1:] }}"
 
-    - name: Convert each CSV row to a dictionary
+    - name: Convert each CSV row to a dictionary preserving order
       ansible.builtin.set_fact:
         structured_vms: >-
           {{
             csv_rows
             | map('split', ',')
             | map('zip', csv_header)
-            | map('map', 'reverse')
             | map('items2dict')
             | list
           }}
@@ -38,9 +37,13 @@
       ansible.builtin.debug:
         var: structured_vms
 
-    - name: Build Forklift VM list (only names from 'RHOS Name' column)
+    - name: Build Forklift VM list from "RHOS Name" column
       ansible.builtin.set_fact:
-        vm_list: "{{ structured_vms | map(attribute='RHOS Name') | map('community.general.dict_kv', 'name') | list }}"
+        vm_list: "{{ structured_vms | map('extract', attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
+
+    - name: Debug VM list for migration plan
+      ansible.builtin.debug:
+        var: vm_list
 
     - name: Create Forklift Migration Plan
       kubernetes.core.k8s:
@@ -92,7 +95,7 @@
       ansible.builtin.set_fact:
         plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
 
-    - name: Create NetworkMap (shared, not per-VM)
+    - name: Create NetworkMap with owner reference
       kubernetes.core.k8s:
         state: present
         definition:
@@ -129,7 +132,7 @@
                   name: "{{ structured_vms[0]['Target Network'] }}"
                   namespace: "{{ target_network_namespace }}"
 
-    - name: Create StorageMap (shared, not per-VM)
+    - name: Create StorageMap with owner reference
       kubernetes.core.k8s:
         state: present
         definition:
