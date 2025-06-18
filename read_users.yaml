@@ -5,7 +5,7 @@
   tasks:
     - name: Read raw CSV file
       ansible.builtin.slurp:
-        src: test_user.csv
+        src: migration_plan.csv
       register: raw_csv
 
     - name: Show CSV content as plain text
