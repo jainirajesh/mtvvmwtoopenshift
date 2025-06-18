@@ -1,8 +1,8 @@
-- name: Load and parse migration_plan.csv without using community.general
+- name: Load and parse migration_plan.csv in AAP-safe way
   hosts: localhost
   gather_facts: false
   vars:
-    csv_path: "migration_plan.csv"  
+    csv_path: "migration_plan.csv"  # ✅ Must be inside project directory
 
   tasks:
 
@@ -11,11 +11,7 @@
         src: "{{ csv_path }}"
       register: raw_csv
 
-    - name: Ensure CSV content was read correctly
-      debug:
-        msg: "{{ raw_csv.content | b64decode }}"
-
-    - name: Decode and split CSV into lines (without splitlines)
+    - name: Decode and split CSV into lines (portable method)
       set_fact:
         csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
 
@@ -23,19 +19,17 @@
       set_fact:
         csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
 
-    - name: Convert CSV rows into list of dicts (rows → key:value using headers)
+    - name: Initialize empty migration_data list
       set_fact:
-        migration_data: >-
-          {{
-            csv_lines[1:] |
-            map('split', ',') |
-            map('map', 'trim') |
-            map('zip', csv_headers) |
-            map('list') |
-            map('dict') |
-            list
-          }}
+        migration_data: []
 
-    - name: Debug final parsed migration_data
+    - name: Convert each CSV row to dictionary and append to migration_data
+      set_fact:
+        migration_data: "{{ migration_data + [dict(csv_headers | zip(row | split(',') | map('trim') | list))] }}"
+      loop: "{{ csv_lines[1:] }}"
+      loop_control:
+        loop_var: row
+
+    - name: Show parsed migration data
       debug:
         var: migration_data
