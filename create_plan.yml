@@ -2,21 +2,9 @@
 - name: VM Migration Plan with Predefined NetworkMap and StorageMap
   hosts: localhost
   gather_facts: false
-  vars:
-    vcenter_hostname: "10.60.38.189"
-    vcenter_username: "vcenter.testing@ngcs-lab.local"
-    vcenter_password: "tyv-XFZ1ehb0wcy!tdw"
 
-    mtv_namespace: "openshift-mtv"
-    source_provider_name: "vmware"
-    destination_provider_name: "host"
-
-    selected_vm_id: "vm-30730"
-    selected_vm_name: "rhel-8"
-
-    network_map_name: "test-networkmap"
-    storage_map_name: "test-storagemap"
-    plan_name: "{{ selected_vm_name }}-vmware-test"
+  vars_files:
+    - vars.yaml
 
   tasks:
 
@@ -114,12 +102,12 @@
                 namespace: "{{ mtv_namespace }}"
             map:
               - destination:
-                  name: "nad"
-                  namespace: "default"
+                  name: "{{ target_networkmap }}"
+                  namespace: "{{ target_network_namespace }}"
                   type: "multus"
                 source:
                   type: vmware
-                  name: "CPMS-External"
+                  name: "{{ source_networkmap }}"
 
     - name: Create StorageMap with owner reference
       kubernetes.core.k8s:
@@ -152,6 +140,6 @@
             map:
               - source:
                   type: vmware
-                  name: "vSAN-Datastore"  # Replace with actual VMware datastore
+                  name: "{{ source_storagemap }}"  # Replace with actual VMware datastore
                 destination:
-                  storageClass: "lvms-vg1"  # Replace with actual OpenShift storage class
+                  storageClass: "{{ target_storagemap }}"  # Replace with actual OpenShift storage class
