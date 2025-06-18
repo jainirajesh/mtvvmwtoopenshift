@@ -1,45 +1,36 @@
-- name: Read CSV and create migration plans
+- name: Load and parse migration_plan.csv without using community.general
   hosts: localhost
   gather_facts: false
   vars:
-    source_provider_name: "vmware"
-    destination_provider_name: "host"
-    mtv_namespace: "openshift-mtv"
-    network_map_name: "test-networkmap"
-    storage_map_name: "test-storagemap"
+    csv_path: "migration_plan.csv"   # 👈 Update this path as needed
 
   tasks:
-
-    - name: Read raw CSV file
-      ansible.builtin.slurp:
-        src: migration_plan.csv
+    - name: Read the CSV file as base64 content
+      slurp:
+        src: "{{ csv_path }}"
       register: raw_csv
 
-    - name: Decode and split CSV lines
+    - name: Decode and split lines
       set_fact:
-        csv_lines: "{{ raw_csv.content | b64decode | split('\n') | select('match', '.*[^,]+.*') | list }}"
+        csv_lines: "{{ raw_csv.content | b64decode | splitlines() }}"
 
-    - name: Parse CSV to list of dicts
+    - name: Extract CSV header
       set_fact:
-        csv_parsed: >-
+        csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
+
+    - name: Convert CSV rows into list of dicts
+      set_fact:
+        migration_data: >-
           {{
-            csv_lines[1:] | map('split', ',') |
-            map('zip', csv_lines[0] | split(',')) |
-            map('items') | map('list') |
-            map('dict') | list
+            csv_lines[1:] |
+            map('split', ',') |
+            map('map', 'trim') |
+            map('zip', csv_headers) |
+            map('list') |
+            map('dict') |
+            list
           }}
 
-    - name: Loop through parsed data to create migration plans
-      loop: "{{ csv_parsed }}"
-      loop_control:
-        label: "{{ item['RHOS Name'] }}"
-      block:
-
-        - name: Create migration plan for {{ item['RHOS Name'] }}
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: forklift.konveyor.io/v1beta1
-              kind: Plan
-              metadata:
-                name: "{{ item['Plan Name'] }}"
+    - name: Debug the final parsed migration data
+      debug:
+        var: migration_data
