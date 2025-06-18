@@ -17,19 +17,69 @@
 
     - name: Decode CSV content
       set_fact:
-        csv_lines: "{{ raw_csv.content | b64decode | split('\n') | reject('equalto', '') | list }}"
+        csv_lines: "{{ raw_csv.content | b64decode | split('\n') | select('length') | list }}"
 
-    - name: Convert CSV to list of dicts
+    - name: Extract CSV header
       set_fact:
-        csv_parsed: >-
-          {{
-            csv_lines[1:] | map('split', ',') |
-            map('zip', csv_lines[0] | split(',')) |
-            map('dict') | list
-          }}
+        csv_headers: "{{ csv_lines[0] | split(',') }}"
 
-    - name: Include task to create migration plan for each row
-      include_tasks: create_plan.yaml
+    - name: Parse CSV rows into structured data
+      set_fact:
+        csv_parsed: "{{ csv_parsed | default([]) + [dict(csv_headers | zip(item | split(',')) | list)] }}"
+      loop: "{{ csv_lines[1:] }}"
+
+    - name: Print parsed CSV rows
+      debug:
+        var: csv_parsed
+
+    - name: Loop through parsed data to create migration plans
       loop: "{{ csv_parsed }}"
       loop_control:
-        loop_var: item
+        label: "{{ item['RHOS Name'] }}"
+      vars:
+        plan_name: "{{ item['Plan Name'] }}"
+        selected_vm_name: "{{ item['RHOS Name'] }}"
+        target_namespace: "{{ item['Target Namespace'] }}"
+        target_storage: "{{ item['Target Storage'] }}"
+        cold_or_warm: "{{ item['Cold or Warm'] }}"
+        keep_ip: "{{ item['Keep IP'] | lower == 'yes' }}"
+      tasks:
+
+        - name: Create migration plan for {{ selected_vm_name }}
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: forklift.konveyor.io/v1beta1
+              kind: Plan
+              metadata:
+                name: "{{ plan_name }}"
+                namespace: "{{ mtv_namespace }}"
+              spec:
+                provider:
+                  source:
+                    apiVersion: forklift.konveyor.io/v1beta1
+                    kind: Provider
+                    name: "{{ source_provider_name }}"
+                    namespace: "{{ mtv_namespace }}"
+                  destination:
+                    apiVersion: forklift.konveyor.io/v1beta1
+                    kind: Provider
+                    name: "{{ destination_provider_name }}"
+                    namespace: "{{ mtv_namespace }}"
+                map:
+                  network:
+                    apiVersion: forklift.konveyor.io/v1beta1
+                    kind: NetworkMap
+                    name: "{{ network_map_name }}"
+                    namespace: "{{ mtv_namespace }}"
+                  storage:
+                    apiVersion: forklift.konveyor.io/v1beta1
+                    kind: StorageMap
+                    name: "{{ storage_map_name }}"
+                    namespace: "{{ mtv_namespace }}"
+                namespace: "{{ mtv_namespace }}"
+                targetNamespace: "{{ target_namespace }}"
+                vms:
+                  - name: "{{ selected_vm_name }}"
+                warm: "{{ cold_or_warm | lower == 'warm' }}"
+                preserveStaticIPs: "{{ keep_ip }}"
