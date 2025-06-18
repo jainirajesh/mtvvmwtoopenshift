@@ -15,11 +15,6 @@
 
   tasks:
 
-    - name: Read migration data from CSV
-      community.general.read_csv:
-        path: migration_plan.csv
-      register: migration_data
-
     - name: Get list of all VMs in vCenter
       vmware.vmware_rest.vcenter_vm_info:
         vcenter_hostname: "{{ vcenter_hostname }}"
@@ -28,6 +23,11 @@
         vcenter_validate_certs: false
       register: vm_list
 
+    - name: Read migration data from CSV
+      community.general.read_csv:
+        path: migration_plan.csv
+      register: migration_data
+    
     - name: Build vm_id map from vCenter data
       set_fact:
         vm_id_map: "{{ vm_id_map | default({}) | combine({ item.name: item.vm }) }}"
