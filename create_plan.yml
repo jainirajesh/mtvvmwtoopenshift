@@ -123,13 +123,13 @@
                 name: "{{ destination_provider_name }}"
                 namespace: "{{ mtv_namespace }}"
             map:
-              - source:
-                  type: vmware
-                  name: "{{ migration_data[0]['Source Network'] | default('') }}"
-                destination:
-                  type: multus
-                  name: "{{ migration_data[0]['Target Network'] | default('') }}"
+              - destination:
+                  name: "{{ target_networkmap }}"
                   namespace: "{{ target_network_namespace }}"
+                  type: "multus"
+                source:
+                  type: vmware
+                  name: "{{ source_networkmap }}"
 
     - name: Create StorageMap with owner reference
       kubernetes.core.k8s:
@@ -162,6 +162,6 @@
             map:
               - source:
                   type: vmware
-                  name: "{{ migration_data[0]['Source Datastore'] | default('') }}"
+                  name: "{{ source_storagemap }}"  # Replace with actual VMware datastore
                 destination:
-                  storageClass: "{{ migration_data[0]['Target StorageClass'] | default('') }}"
+                  storageClass: "{{ target_storagemap }}"  # Replace with actual OpenShift storage class
