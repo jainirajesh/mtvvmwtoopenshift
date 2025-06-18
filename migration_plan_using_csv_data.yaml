@@ -25,7 +25,7 @@
     
     - name: Read migration data from CSV
       community.general.read_csv:
-        path: migration.csv
+        path: migration_plan.csv
         key: RHOS Name
       register: migration_data
       delegate_to: localhost
