@@ -30,6 +30,7 @@
       loop: "{{ csv_lines[1:] }}"
       loop_control:
         loop_var: row
+      when: row.strip() != ''  # ✅ Skip empty lines
 
     - name: Show parsed migration data
       debug:
