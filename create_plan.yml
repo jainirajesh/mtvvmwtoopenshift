@@ -13,7 +13,7 @@
         src: migration_plan.csv
       register: raw_csv
 
-    - name: Decode CSV lines
+    - name: Decode CSV lines (remove empty lines)
       ansible.builtin.set_fact:
         csv_lines: "{{ raw_csv.content | b64decode | split('\n') | reject('equalto', '') | list }}"
 
@@ -22,28 +22,25 @@
         csv_header: "{{ csv_lines[0].split(',') }}"
         csv_rows: "{{ csv_lines[1:] }}"
 
-    - name: Build structured VM dict list
+    - name: Convert each CSV row to a dictionary
       ansible.builtin.set_fact:
         structured_vms: >-
           {{
             csv_rows
             | map('split', ',')
             | map('zip', csv_header)
+            | map('map', 'reverse')
             | map('items2dict')
             | list
           }}
 
-    - name: Debug VM entries
+    - name: Debug structured VM data
       ansible.builtin.debug:
         var: structured_vms
 
-    - name: Build Forklift VM list (only VM names from 'RHOS Name' column)
+    - name: Build Forklift VM list (only names from 'RHOS Name' column)
       ansible.builtin.set_fact:
-        vm_list: "{{ structured_vms | map(attribute='RHOS Name') | map('regex_replace', '^\\s+|\\s+$', '') | map('community.general.dict_kv', 'name') | list }}"
-
-    - name: Debug VM list
-      ansible.builtin.debug:
-        var: vm_list
+        vm_list: "{{ structured_vms | map(attribute='RHOS Name') | map('community.general.dict_kv', 'name') | list }}"
 
     - name: Create Forklift Migration Plan
       kubernetes.core.k8s:
