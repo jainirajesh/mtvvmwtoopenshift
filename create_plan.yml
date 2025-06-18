@@ -102,12 +102,12 @@
                 namespace: "{{ mtv_namespace }}"
             map:
               - destination:
-                  name: "nad"
-                  namespace: "default"
+                  name: "{{ target_networkmap }}"
+                  namespace: "{{ target_network_namespace }}"
                   type: "multus"
                 source:
                   type: vmware
-                  name: "CPMS-External"
+                  name: "{{ source_networkmap }}"
 
     - name: Create StorageMap with owner reference
       kubernetes.core.k8s:
@@ -140,6 +140,6 @@
             map:
               - source:
                   type: vmware
-                  name: "vSAN-Datastore"  # Replace with actual VMware datastore
+                  name: "{{ source_storagemap }}"  # Replace with actual VMware datastore
                 destination:
-                  storageClass: "lvms-vg1"  # Replace with actual OpenShift storage class
+                  storageClass: "{{ target_storagemap }}"  # Replace with actual OpenShift storage class
