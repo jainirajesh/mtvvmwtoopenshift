@@ -23,16 +23,18 @@
         csv_rows: "{{ csv_lines[1:] }}"
 
     - name: Convert each CSV row to a dictionary preserving order
-      ansible.builtin.set_fact:
-        structured_vms: >-
-          {{ csv_rows
-            | map('split', ',')
-            | map('zip', csv_header)
-            | map('map', 'reverse')
-            | map('list')
-            | map('from_items')
-            | list
-          }}
+      set_fact:
+      parsed_csv: >-
+        {% set result = [] %}
+        {% for row in csv_rows %}
+          {% set values = row.split(',') %}
+          {% set item = {} %}
+          {% for i in range(csv_header | length) %}
+            {% set _ = item.update({ (csv_header[i] | trim): (values[i] | trim) }) %}
+          {% endfor %}
+          {% do result.append(item) %}
+        {% endfor %}
+        {{ result }}
 
     - name: Debug structured VM data
       ansible.builtin.debug:
