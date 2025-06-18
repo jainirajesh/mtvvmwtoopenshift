@@ -13,17 +13,31 @@
         src: migration_plan.csv
       register: raw_csv
 
+    - name: Debug raw CSV content (decoded)
+      debug:
+        msg: "{{ raw_csv.content | b64decode }}"
+
     - name: Decode CSV lines and remove empty lines
-      set_fact:
+      ansible.builtin.set_fact:
         csv_lines: "{{ (raw_csv.content | b64decode).splitlines() | reject('equalto', '') | list }}"
 
+    - name: Debug CSV lines
+      debug:
+        var: csv_lines
+
     - name: Extract header and VM data rows
-      set_fact:
+      ansible.builtin.set_fact:
         csv_header: "{{ csv_lines[0].split(',') | map('trim') | list }}"
         csv_rows: "{{ csv_lines[1:] }}"
 
+    - name: Debug csv_header and csv_rows first line
+      debug:
+        msg:
+          header: "{{ csv_header }}"
+          first_row: "{{ csv_rows[0] if csv_rows else 'no rows' }}"
+
     - name: Convert each CSV row to a dictionary preserving order
-      set_fact:
+      ansible.builtin.set_fact:
         parsed_csv: >-
           {% set result = [] %}
           {% for row in csv_rows %}
@@ -31,23 +45,23 @@
             {% set item = {} %}
             {% for i in range(csv_header | length) %}
               {% set key = csv_header[i] %}
-              {% set value = values[i] if i < (values | length) else '' %}
-              {% set _ = item.update({ key: value | trim }) %}
+              {% set val = values[i] if i < (values | length) else '' %}
+              {% set _ = item.update({key: val | trim}) %}
             {% endfor %}
             {% set result = result + [item] %}
           {% endfor %}
           {{ result }}
 
-    - name: Debug parsed CSV data
-      debug:
+    - name: Debug structured VM data
+      ansible.builtin.debug:
         var: parsed_csv
 
     - name: Build Forklift VM list from "RHOS Name" column
-      set_fact:
-        vm_list: "{{ parsed_csv | map(attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
+      ansible.builtin.set_fact:
+        vm_list: "{{ parsed_csv | map('extract', attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
 
     - name: Debug VM list for migration plan
-      debug:
+      ansible.builtin.debug:
         var: vm_list
 
     - name: Create Forklift Migration Plan
@@ -97,7 +111,7 @@
       register: plan_info
 
     - name: Set Plan UID
-      set_fact:
+      ansible.builtin.set_fact:
         plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
 
     - name: Create NetworkMap with owner reference
@@ -131,10 +145,10 @@
             map:
               - source:
                   type: vmware
-                  name: "{{ parsed_csv[0]['Source Network'] | default('') }}"
+                  name: "{{ parsed_csv[0]['Source Network'] }}"
                 destination:
                   type: multus
-                  name: "{{ parsed_csv[0]['Target Network'] | default('') }}"
+                  name: "{{ parsed_csv[0]['Target Network'] }}"
                   namespace: "{{ target_network_namespace }}"
 
     - name: Create StorageMap with owner reference
@@ -168,6 +182,6 @@
             map:
               - source:
                   type: vmware
-                  name: "{{ parsed_csv[0]['Source Datastore'] | default('') }}"
+                  name: "{{ parsed_csv[0]['Source Datastore'] }}"
                 destination:
-                  storageClass: "{{ parsed_csv[0]['Target StorageClass'] | default('') }}"
+                  storageClass: "{{ parsed_csv[0]['Target StorageClass'] }}"
