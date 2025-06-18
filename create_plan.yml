@@ -30,7 +30,7 @@
             | map('zip', csv_header)
             | map('map', 'reverse')
             | map('list')
-            | map('combine')
+            | map('from_items')
             | list
           }}
 
