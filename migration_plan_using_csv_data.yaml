@@ -1,4 +1,4 @@
-- name: Load and parse migration_plan.csv in AAP-safe way
+- name: Load and parse migration_plan.csv in AAP
   hosts: localhost
   gather_facts: false
   vars:
@@ -11,7 +11,7 @@
         src: "{{ csv_path }}"
       register: raw_csv
 
-    - name: Decode and split CSV into lines (portable method)
+    - name: Decode and split CSV into lines
       set_fact:
         csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
 
