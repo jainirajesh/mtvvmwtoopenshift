@@ -2,23 +2,28 @@
   hosts: localhost
   gather_facts: false
   vars:
-    csv_path: "migration_plan.csv"   # 👈 Update this path as needed
+    csv_path: "migration_plan.csv"  
 
   tasks:
-    - name: Read the CSV file as base64 content
+
+    - name: Read CSV content (base64)
       slurp:
         src: "{{ csv_path }}"
       register: raw_csv
 
-    - name: Decode and split lines
-      set_fact:
-        "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
+    - name: Ensure CSV content was read correctly
+      debug:
+        msg: "{{ raw_csv.content | b64decode }}"
 
-    - name: Extract CSV header
+    - name: Decode and split CSV into lines (without splitlines)
+      set_fact:
+        csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
+
+    - name: Extract CSV headers
       set_fact:
         csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
 
-    - name: Convert CSV rows into list of dicts
+    - name: Convert CSV rows into list of dicts (rows → key:value using headers)
       set_fact:
         migration_data: >-
           {{
@@ -31,6 +36,6 @@
             list
           }}
 
-    - name: Debug the final parsed migration data
+    - name: Debug final parsed migration_data
       debug:
         var: migration_data
