@@ -1,5 +1,5 @@
 ---
-- name: VM Migration Plan with Predefined NetworkMap and StorageMap from Excel
+- name: VM Migration Plan with Predefined NetworkMap and StorageMap from CSV
   hosts: localhost
   gather_facts: false
 
@@ -7,22 +7,20 @@
     - vars.yaml
 
   vars:
-    excel_local_path: "{{ playbook_dir }}/MigrationPlan.xlsx"   # Excel file next to vars.yaml and playbook
-    sheet_name: "Sheet1"                               # Change if your sheet name differs
+    csv_local_path: "{{ playbook_dir }}/migration_plan.csv"
 
   tasks:
 
-    - name: Read Excel file with VM names (local file)
-      community.general.read_xlsx:
-        path: "{{ excel_local_path }}"
-        sheet_name: "{{ sheet_name }}"
-      register: xlsx_data
+    - name: Read CSV file with VM names
+      ansible.builtin.read_csv:
+        path: "{{ csv_local_path }}"
+      register: csv_data
 
     - name: Extract VM names from 'RHOS Name' column
       ansible.builtin.set_fact:
         vm_names: >-
           {{
-            xlsx_data.sheet[sheet_name]
+            csv_data.list
             | selectattr('RHOS Name', 'defined')
             | map(attribute='RHOS Name')
             | list
@@ -32,7 +30,7 @@
       ansible.builtin.debug:
         var: vm_names
 
-    - name: Create Migration Plan for each VM from Excel
+    - name: Create Migration Plan for each VM from CSV
       kubernetes.core.k8s:
         state: present
         definition:
