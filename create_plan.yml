@@ -1,5 +1,5 @@
 ---
-- name: VM Migration Plan using CSV-defined RHOS VM names
+- name: VM Migration Plan with multicolumn CSV input
   hosts: localhost
   gather_facts: false
 
@@ -8,20 +8,39 @@
 
   tasks:
 
-    - name: Read CSV file containing RHOS VM names
-      community.general.read_csv:
-        path: migration_plan.csv
-      register: csv_vm_list
+    - name: Load raw CSV file
+      ansible.builtin.slurp:
+        src: migration_plan.csv
+      register: raw_csv
 
-    - name: Set VM name list from 'RHOS Name' column
+    - name: Decode CSV lines
       ansible.builtin.set_fact:
-        vm_names: "{{ csv_vm_list.list | map(attribute='RHOS Name') | list }}"
+        csv_lines: "{{ raw_csv.content | b64decode | splitlines() }}"
 
-    - name: Debug print VM names from CSV
+    - name: Extract header and VM data
+      ansible.builtin.set_fact:
+        csv_header: "{{ csv_lines[0].split(',') }}"
+        csv_rows: "{{ csv_lines[1:] }}"
+
+    - name: Build structured VM dict list
+      ansible.builtin.set_fact:
+        structured_vms: >-
+          {{
+            csv_rows | map('split', ',') |
+            map('zip', csv_header) |
+            map('community.general.dict') |
+            list
+          }}
+
+    - name: Debug VM entries
       ansible.builtin.debug:
-        var: vm_names
+        var: structured_vms
 
-    - name: Create Migration Plan
+    - name: Build Forklift VM list (only names)
+      ansible.builtin.set_fact:
+        vm_list: "{{ structured_vms | map(attribute='RHOS Name') | map('community.general.dict_kv', 'name') | list }}"
+
+    - name: Create Forklift Migration Plan
       kubernetes.core.k8s:
         state: present
         definition:
@@ -55,7 +74,7 @@
                 namespace: "{{ mtv_namespace }}"
             namespace: "{{ mtv_namespace }}"
             targetNamespace: "{{ mtv_namespace }}"
-            vms: "{{ vm_names | map('community.general.dict_kv', 'name') | list }}"
+            vms: "{{ vm_list }}"
             warm: true
             preserveStaticIPs: true
 
@@ -71,7 +90,7 @@
       ansible.builtin.set_fact:
         plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
 
-    - name: Create NetworkMap with owner reference
+    - name: Create NetworkMap (shared, not per-VM)
       kubernetes.core.k8s:
         state: present
         definition:
@@ -100,15 +119,15 @@
                 name: "{{ destination_provider_name }}"
                 namespace: "{{ mtv_namespace }}"
             map:
-              - destination:
-                  name: "{{ target_networkmap }}"
-                  namespace: "{{ target_network_namespace }}"
-                  type: "multus"
-                source:
+              - source:
                   type: vmware
-                  name: "{{ source_networkmap }}"
+                  name: "{{ structured_vms[0]['Source Network'] }}"
+                destination:
+                  type: multus
+                  name: "{{ structured_vms[0]['Target Network'] }}"
+                  namespace: "{{ target_network_namespace }}"
 
-    - name: Create StorageMap with owner reference
+    - name: Create StorageMap (shared, not per-VM)
       kubernetes.core.k8s:
         state: present
         definition:
@@ -135,3 +154,10 @@
                 apiVersion: forklift.konveyor.io/v1beta1
                 kind: Provider
                 name: "{{ destination_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
+            map:
+              - source:
+                  type: vmware
+                  name: "{{ structured_vms[0]['Source Datastore'] }}"
+                destination:
+                  storageClass: "{{ structured_vms[0]['Target StorageClass'] }}"
