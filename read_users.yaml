@@ -1,13 +1,27 @@
-- name: Test reading CSV with community.general.read_csv
+- name: Read and parse CSV manually
   hosts: localhost
   gather_facts: false
+  vars:
+    csv_path: "test_user.csv"
   tasks:
-    - name: Read CSV file
-      community.general.read_csv:
-        path: test_user.csv
-        key: name
-      register: csv_data
+    - name: Slurp CSV file contents
+      ansible.builtin.slurp:
+        src: "{{ csv_path }}"
+      register: csv_file
 
-    - name: Print parsed CSV data
+    - name: Decode CSV content and split lines
+      set_fact:
+        csv_lines: "{{ csv_file['content'] | b64decode | splitlines() }}"
+
+    - name: Parse CSV into list of dictionaries
+      set_fact:
+        csv_parsed: >-
+          {{
+            csv_lines[1:] | map('split', ',') |
+            map('zip', csv_lines[0] | split(',')) |
+            map('community.general.dict') | list
+          }}
+
+    - name: Display parsed CSV content
       debug:
-        var: csv_data.dict
+        var: csv_parsed
