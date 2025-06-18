@@ -24,25 +24,25 @@
 
     - name: Convert each CSV row to a dictionary preserving order
       set_fact:
-      parsed_csv: >-
-        {% set result = [] %}
-        {% for row in csv_rows %}
-          {% set values = row.split(',') %}
-          {% set item = {} %}
-          {% for i in range(csv_header | length) %}
-            {% set _ = item.update({ (csv_header[i] | trim): (values[i] | trim) }) %}
+        parsed_csv: >-
+          {% set result = [] %}
+          {% for row in csv_rows %}
+            {% set values = row.split(',') %}
+            {% set item = {} %}
+            {% for i in range(csv_header | length) %}
+              {% set _ = item.update({ (csv_header[i] | trim): (values[i] | trim) }) %}
+            {% endfor %}
+            {% do result.append(item) %}
           {% endfor %}
-          {% do result.append(item) %}
-        {% endfor %}
-        {{ result }}
+          {{ result }}
 
     - name: Debug structured VM data
       ansible.builtin.debug:
-        var: structured_vms
+        var: parsed_csv
 
     - name: Build Forklift VM list from "RHOS Name" column
       ansible.builtin.set_fact:
-        vm_list: "{{ structured_vms | map('extract', attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
+        vm_list: "{{ parsed_csv | map('extract', attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
 
     - name: Debug VM list for migration plan
       ansible.builtin.debug:
@@ -129,10 +129,10 @@
             map:
               - source:
                   type: vmware
-                  name: "{{ structured_vms[0]['Source Network'] }}"
+                  name: "{{ parsed_csv[0]['Source Network'] }}"
                 destination:
                   type: multus
-                  name: "{{ structured_vms[0]['Target Network'] }}"
+                  name: "{{ parsed_csv[0]['Target Network'] }}"
                   namespace: "{{ target_network_namespace }}"
 
     - name: Create StorageMap with owner reference
@@ -166,6 +166,6 @@
             map:
               - source:
                   type: vmware
-                  name: "{{ structured_vms[0]['Source Datastore'] }}"
+                  name: "{{ parsed_csv[0]['Source Datastore'] }}"
                 destination:
-                  storageClass: "{{ structured_vms[0]['Target StorageClass'] }}"
+                  storageClass: "{{ parsed_csv[0]['Target StorageClass'] }}"
