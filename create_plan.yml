@@ -7,39 +7,37 @@
     - vars.yaml  # define your variables here: plan_name, mtv_namespace, source_provider_name, destination_provider_name, network_map_name, storage_map_name, target_network_namespace
 
   tasks:
-    - name: Load raw CSV file as base64
-      ansible.builtin.slurp:
-        src: migration_plan.csv
+     - name: Read CSV content (base64)
+      slurp:
+        src: "{{ csv_path }}"
       register: raw_csv
 
-    - name: Decode CSV lines and filter empty
+    - name: Decode and split CSV into lines
       set_fact:
-        csv_lines: "{{ (raw_csv.content | b64decode).splitlines() | reject('equalto', '') | list }}"
+        csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
 
-    - name: Extract CSV header (list)
+    - name: Extract CSV headers
       set_fact:
-        csv_header: "{{ csv_lines[0].split(',') | map('trim') | list }}"
+        csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
 
-    - name: Extract CSV data rows (list)
+    - name: Initialize empty migration_data list
       set_fact:
-        csv_data_rows: "{{ csv_lines[1:] }}"
+        migration_data: []
 
-    - name: Initialize parsed CSV list
+    - name: Convert each CSV row to dictionary and append to migration_data
       set_fact:
-        parsed_csv: []
+        migration_data: "{{ migration_data + [dict(csv_headers | zip(row | split(',') | map('trim') | list))] }}"
+      loop: "{{ csv_lines[1:] }}"
+      loop_control:
+        loop_var: row
 
-    - name: Parse CSV rows into list of dicts
-      set_fact:
-        parsed_csv: "{{ parsed_csv + [ dict(zip(csv_header, item.split(','))) ] }}"
-      loop: "{{ csv_data_rows }}"
-
-    - name: Debug parsed CSV content
+    - name: Show parsed migration data
       debug:
-        var: parsed_csv
+        var: migration_data
 
     - name: Build Forklift VM list from "RHOS Name" column
       set_fact:
-        vm_list: "{{ parsed_csv | map(attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
+        vm_list: "{{ migration_data | map(attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
 
     - name: Debug VM list
       debug:
@@ -126,10 +124,10 @@
             map:
               - source:
                   type: vmware
-                  name: "{{ parsed_csv[0]['Source Network'] | default('') }}"
+                  name: "{{ migration_data[0]['Source Network'] | default('') }}"
                 destination:
                   type: multus
-                  name: "{{ parsed_csv[0]['Target Network'] | default('') }}"
+                  name: "{{ migration_data[0]['Target Network'] | default('') }}"
                   namespace: "{{ target_network_namespace }}"
 
     - name: Create StorageMap with owner reference
