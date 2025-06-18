@@ -70,7 +70,7 @@
                 apiVersion: forklift.konveyor.io/v1beta1
                 kind: NetworkMap
                 name: "{{ network_map_name }}-{{ plan_name }}"
-                namespace: "{{ mtv_namespace }}"
+                namespace: "default"
               storage:
                 apiVersion: forklift.konveyor.io/v1beta1
                 kind: StorageMap
