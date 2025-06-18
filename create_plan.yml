@@ -1,5 +1,5 @@
 ---
-- name: VM Migration Plan with Predefined NetworkMap and StorageMap from CSV
+- name: VM Migration Plan with Predefined NetworkMap and StorageMap from CSV using csvfile lookup
   hosts: localhost
   gather_facts: false
 
@@ -11,20 +11,9 @@
 
   tasks:
 
-    - name: Read CSV file with VM names
-      ansible.builtin.read_csv:
-        path: "{{ csv_local_path }}"
-      register: csv_data
-
-    - name: Extract VM names from 'RHOS Name' column
+    - name: Read VM names from CSV using csvfile lookup
       ansible.builtin.set_fact:
-        vm_names: >-
-          {{
-            csv_data.list
-            | selectattr('RHOS Name', 'defined')
-            | map(attribute='RHOS Name')
-            | list
-          }}
+        vm_names: "{{ lookup('csvfile', 'RHOS Name', csv_local_path) }}"
 
     - name: Debug VM names list
       ansible.builtin.debug:
