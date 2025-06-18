@@ -1,5 +1,5 @@
 ---
-- name: VM Migration Plan with Predefined NetworkMap and StorageMap from CSV using csvfile lookup
+- name: VM Migration Plan with Predefined NetworkMap and StorageMap from CSV
   hosts: localhost
   gather_facts: false
 
@@ -60,83 +60,86 @@
       loop: "{{ vm_names }}"
       register: created_plans
 
-    - name: Add NetworkMap and StorageMap with owner reference per created Plan
+    - name: Create NetworkMap with owner reference per created Plan
       vars:
         current_plan_name: "{{ item.resources[0].metadata.name }}"
         current_plan_uid: "{{ item.resources[0].metadata.uid }}"
       loop: "{{ created_plans.results }}"
       loop_control:
         label: "{{ current_plan_name }}"
-      block:
-
-        - name: Create NetworkMap with owner reference for {{ current_plan_name }}
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: forklift.konveyor.io/v1beta1
-              kind: NetworkMap
-              metadata:
-                name: "{{ network_map_name }}-{{ current_plan_name }}"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: NetworkMap
+          metadata:
+            name: "{{ network_map_name }}-{{ current_plan_name }}"
+            namespace: "{{ mtv_namespace }}"
+            ownerReferences:
+              - apiVersion: forklift.konveyor.io/v1beta1
+                kind: Plan
+                name: "{{ current_plan_name }}"
+                uid: "{{ current_plan_uid }}"
+                controller: true
+                blockOwnerDeletion: true
+          spec:
+            provider:
+              source:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
+                name: "{{ source_provider_name }}"
                 namespace: "{{ mtv_namespace }}"
-                ownerReferences:
-                  - apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Plan
-                    name: "{{ current_plan_name }}"
-                    uid: "{{ current_plan_uid }}"
-                    controller: true
-                    blockOwnerDeletion: true
-              spec:
-                provider:
-                  source:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ source_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                  destination:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ destination_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                map:
-                  - destination:
-                      name: "{{ target_networkmap }}"
-                      namespace: "{{ target_network_namespace }}"
-                      type: "multus"
-                    source:
-                      type: vmware
-                      name: "{{ source_networkmap }}"
-
-        - name: Create StorageMap with owner reference for {{ current_plan_name }}
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: forklift.konveyor.io/v1beta1
-              kind: StorageMap
-              metadata:
-                name: "{{ storage_map_name }}-{{ current_plan_name }}"
+              destination:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
+                name: "{{ destination_provider_name }}"
                 namespace: "{{ mtv_namespace }}"
-                ownerReferences:
-                  - apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Plan
-                    name: "{{ current_plan_name }}"
-                    uid: "{{ current_plan_uid }}"
-                    controller: true
-                    blockOwnerDeletion: true
-              spec:
-                provider:
-                  source:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ source_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                  destination:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ destination_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                map:
-                  - source:
-                      type: vmware
-                      name: "{{ source_storagemap }}"
-                    destination:
-                      storageClass: "{{ target_storagemap }}"
+            map:
+              - destination:
+                  name: "{{ target_networkmap }}"
+                  namespace: "{{ target_network_namespace }}"
+                  type: "multus"
+                source:
+                  type: vmware
+                  name: "{{ source_networkmap }}"
+
+    - name: Create StorageMap with owner reference per created Plan
+      vars:
+        current_plan_name: "{{ item.resources[0].metadata.name }}"
+        current_plan_uid: "{{ item.resources[0].metadata.uid }}"
+      loop: "{{ created_plans.results }}"
+      loop_control:
+        label: "{{ current_plan_name }}"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: StorageMap
+          metadata:
+            name: "{{ storage_map_name }}-{{ current_plan_name }}"
+            namespace: "{{ mtv_namespace }}"
+            ownerReferences:
+              - apiVersion: forklift.konveyor.io/v1beta1
+                kind: Plan
+                name: "{{ current_plan_name }}"
+                uid: "{{ current_plan_uid }}"
+                controller: true
+                blockOwnerDeletion: true
+          spec:
+            provider:
+              source:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
+                name: "{{ source_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
+              destination:
+                apiVersion: forklift.konveyor.io/v1beta1
+                kind: Provider
+                name: "{{ destination_provider_name }}"
+                namespace: "{{ mtv_namespace }}"
+            map:
+              - source:
+                  type: vmware
+                  name: "{{ source_storagemap }}"
+                destination:
+                  storageClass: "{{ target_storagemap }}"
