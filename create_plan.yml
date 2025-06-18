@@ -1,52 +1,15 @@
 ---
-- name: VM Migration Plan with multicolumn CSV input (AAP compatible)
+- name: VM Migration Plan with CSV input using read_csv plugin
   hosts: localhost
   gather_facts: false
 
   vars_files:
-    - vars.yaml
+    - vars.yaml  # Your variables here
 
   tasks:
-
-    - name: Load raw CSV file as base64
-      ansible.builtin.slurp:
-        src: migration_plan.csv
-      register: raw_csv
-
-    - name: Decode CSV lines and remove empty lines
+    - name: Read CSV file into a list of dictionaries
       set_fact:
-        csv_lines: "{{ (raw_csv.content | b64decode).splitlines() | reject('equalto', '') | list }}"
-
-    - name: Debug csv_lines to verify CSV content
-      debug:
-        var: csv_lines
-
-    - name: Extract CSV header and rows
-      set_fact:
-        csv_header: "{{ csv_lines[0].split(',') | map('trim') | list }}"
-        csv_rows: "{{ csv_lines[1:] }}"
-
-    - name: Debug header and first data row
-      debug:
-        msg:
-          header: "{{ csv_header }}"
-          first_row: "{{ csv_rows[0] if csv_rows else 'No data rows' }}"
-
-    - name: Convert CSV rows into list of dictionaries
-      set_fact:
-        parsed_csv: >-
-          {% set result = [] %}
-          {% for row in csv_rows %}
-            {% set values = row.split(',') %}
-            {% set item = {} %}
-            {% for i in range(csv_header | length) %}
-              {% set key = csv_header[i] %}
-              {% set val = values[i] if i < (values | length) else '' %}
-              {% set item = item | combine({key: val | trim}) %}
-            {% endfor %}
-            {% set result = result + [item] %}
-          {% endfor %}
-          {{ result }}
+        parsed_csv: "{{ lookup('ansible.builtin.read_csv', 'migration_plan.csv', delimiter=',') }}"
 
     - name: Debug parsed CSV data
       debug:
