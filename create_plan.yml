@@ -60,14 +60,14 @@
       loop: "{{ vm_names }}"
       register: created_plans
 
-    - name: Loop over created plans to add NetworkMap and StorageMap with owner reference
+    - name: Add NetworkMap and StorageMap with owner reference per created Plan
       vars:
         current_plan_name: "{{ item.resources[0].metadata.name }}"
         current_plan_uid: "{{ item.resources[0].metadata.uid }}"
       loop: "{{ created_plans.results }}"
       loop_control:
-        label: "{{ item.resources[0].metadata.name }}"
-      tasks:
+        label: "{{ current_plan_name }}"
+      block:
 
         - name: Create NetworkMap with owner reference for {{ current_plan_name }}
           kubernetes.core.k8s:
