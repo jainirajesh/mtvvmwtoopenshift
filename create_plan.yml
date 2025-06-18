@@ -7,7 +7,7 @@
     - vars.yaml  # define your variables here: plan_name, mtv_namespace, source_provider_name, destination_provider_name, network_map_name, storage_map_name, target_network_namespace
 
   tasks:
-     - name: Read CSV content (base64)
+    - name: Read CSV content (base64)
       slurp:
         src: "{{ csv_path }}"
       register: raw_csv
