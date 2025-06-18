@@ -14,12 +14,12 @@
       register: raw_csv
 
     - name: Decode CSV lines and remove empty lines
-      ansible.builtin.set_fact:
+      set_fact:
         csv_lines: "{{ (raw_csv.content | b64decode).splitlines() | reject('equalto', '') | list }}"
 
-    - name: Extract header and VM data
-      ansible.builtin.set_fact:
-        csv_header: "{{ csv_lines[0].split(',') }}"
+    - name: Extract header and VM data rows
+      set_fact:
+        csv_header: "{{ csv_lines[0].split(',') | map('trim') | list }}"
         csv_rows: "{{ csv_lines[1:] }}"
 
     - name: Convert each CSV row to a dictionary preserving order
@@ -30,22 +30,24 @@
             {% set values = row.split(',') %}
             {% set item = {} %}
             {% for i in range(csv_header | length) %}
-              {% set _ = item.update({ (csv_header[i] | trim): (values[i] | trim) }) %}
+              {% set key = csv_header[i] %}
+              {% set value = values[i] if i < (values | length) else '' %}
+              {% set _ = item.update({ key: value | trim }) %}
             {% endfor %}
             {% set result = result + [item] %}
           {% endfor %}
           {{ result }}
 
-    - name: Debug structured VM data
-      ansible.builtin.debug:
+    - name: Debug parsed CSV data
+      debug:
         var: parsed_csv
 
     - name: Build Forklift VM list from "RHOS Name" column
-      ansible.builtin.set_fact:
-        vm_list: "{{ parsed_csv | map('extract', attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
+      set_fact:
+        vm_list: "{{ parsed_csv | map(attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
 
     - name: Debug VM list for migration plan
-      ansible.builtin.debug:
+      debug:
         var: vm_list
 
     - name: Create Forklift Migration Plan
@@ -95,7 +97,7 @@
       register: plan_info
 
     - name: Set Plan UID
-      ansible.builtin.set_fact:
+      set_fact:
         plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
 
     - name: Create NetworkMap with owner reference
@@ -129,10 +131,10 @@
             map:
               - source:
                   type: vmware
-                  name: "{{ parsed_csv[0]['Source Network'] }}"
+                  name: "{{ parsed_csv[0]['Source Network'] | default('') }}"
                 destination:
                   type: multus
-                  name: "{{ parsed_csv[0]['Target Network'] }}"
+                  name: "{{ parsed_csv[0]['Target Network'] | default('') }}"
                   namespace: "{{ target_network_namespace }}"
 
     - name: Create StorageMap with owner reference
@@ -166,6 +168,6 @@
             map:
               - source:
                   type: vmware
-                  name: "{{ parsed_csv[0]['Source Datastore'] }}"
+                  name: "{{ parsed_csv[0]['Source Datastore'] | default('') }}"
                 destination:
-                  storageClass: "{{ parsed_csv[0]['Target StorageClass'] }}"
+                  storageClass: "{{ parsed_csv[0]['Target StorageClass'] | default('') }}"
