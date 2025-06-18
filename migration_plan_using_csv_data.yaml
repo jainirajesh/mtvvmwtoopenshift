@@ -12,7 +12,7 @@
 
     - name: Decode and split lines
       set_fact:
-        {{ raw_csv.content | b64decode | regex_findall('.*') }}
+        "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
 
     - name: Extract CSV header
       set_fact:
