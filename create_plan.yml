@@ -1,5 +1,5 @@
 ---
-- name: VM Migration Plan with Predefined NetworkMap and StorageMap
+- name: VM Migration Plan using CSV-defined RHOS VM names
   hosts: localhost
   gather_facts: false
 
@@ -8,18 +8,18 @@
 
   tasks:
 
-    - name: Get list of all VMs in vCenter
-      vmware.vmware_rest.vcenter_vm_info:
-        vcenter_hostname: "{{ vcenter_hostname }}"
-        vcenter_username: "{{ vcenter_username }}"
-        vcenter_password: "{{ vcenter_password }}"
-        vcenter_validate_certs: false
-      register: vm_list
+    - name: Read CSV file containing RHOS VM names
+      ansible.builtin.read_csv:
+        path: migration_plan.csv
+      register: csv_vm_list
 
-    - name: Print VM Name and VM ID
+    - name: Set VM name list from 'RHOS Name' column
+      ansible.builtin.set_fact:
+        vm_names: "{{ csv_vm_list.list | map(attribute='RHOS Name') | list }}"
+
+    - name: Debug print VM names from CSV
       ansible.builtin.debug:
-        msg: "VM Name: {{ item.name }} | VM ID: {{ item.vm }}"
-      loop: "{{ vm_list.value }}"
+        var: vm_names
 
     - name: Create Migration Plan
       kubernetes.core.k8s:
@@ -55,8 +55,7 @@
                 namespace: "{{ mtv_namespace }}"
             namespace: "{{ mtv_namespace }}"
             targetNamespace: "{{ mtv_namespace }}"
-            vms:
-              - name: "{{ selected_vm_name }}"
+            vms: "{{ vm_names | map('community.general.dict_kv', 'name') | list }}"
             warm: true
             preserveStaticIPs: true
 
@@ -136,10 +135,3 @@
                 apiVersion: forklift.konveyor.io/v1beta1
                 kind: Provider
                 name: "{{ destination_provider_name }}"
-                namespace: "{{ mtv_namespace }}"
-            map:
-              - source:
-                  type: vmware
-                  name: "{{ source_storagemap }}"  # Replace with actual VMware datastore
-                destination:
-                  storageClass: "{{ target_storagemap }}"  # Replace with actual OpenShift storage class
