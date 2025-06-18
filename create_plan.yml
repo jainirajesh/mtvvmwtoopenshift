@@ -9,7 +9,7 @@
   tasks:
 
     - name: Read CSV file containing RHOS VM names
-      ansible.builtin.read_csv:
+      community.general.read_csv:
         path: migration_plan.csv
       register: csv_vm_list
 
