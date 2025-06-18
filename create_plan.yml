@@ -1,17 +1,39 @@
 ---
-- name: VM Migration Plan with CSV input using read_csv plugin
+- name: VM Migration Plan with manual CSV parsing (AAP compatible)
   hosts: localhost
   gather_facts: false
 
   vars_files:
-    - vars.yaml  # Your variables here
+    - vars.yaml  # define your variables here: plan_name, mtv_namespace, source_provider_name, destination_provider_name, network_map_name, storage_map_name, target_network_namespace
 
   tasks:
-    - name: Read CSV file into a list of dictionaries
-      set_fact:
-        parsed_csv: "{{ lookup('ansible.builtin.read_csv', 'migration_plan.csv', delimiter=',') }}"
+    - name: Load raw CSV file as base64
+      ansible.builtin.slurp:
+        src: migration_plan.csv
+      register: raw_csv
 
-    - name: Debug parsed CSV data
+    - name: Decode CSV lines and filter empty
+      set_fact:
+        csv_lines: "{{ (raw_csv.content | b64decode).splitlines() | reject('equalto', '') | list }}"
+
+    - name: Extract CSV header (list)
+      set_fact:
+        csv_header: "{{ csv_lines[0].split(',') | map('trim') | list }}"
+
+    - name: Extract CSV data rows (list)
+      set_fact:
+        csv_data_rows: "{{ csv_lines[1:] }}"
+
+    - name: Initialize parsed CSV list
+      set_fact:
+        parsed_csv: []
+
+    - name: Parse CSV rows into list of dicts
+      set_fact:
+        parsed_csv: "{{ parsed_csv + [ dict(zip(csv_header, item.split(','))) ] }}"
+      loop: "{{ csv_data_rows }}"
+
+    - name: Debug parsed CSV content
       debug:
         var: parsed_csv
 
