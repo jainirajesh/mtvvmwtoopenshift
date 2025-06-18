@@ -25,12 +25,12 @@
     - name: Convert each CSV row to a dictionary preserving order
       ansible.builtin.set_fact:
         structured_vms: >-
-          {{
-            csv_rows
+          {{ csv_rows
             | map('split', ',')
             | map('zip', csv_header)
             | map('map', 'reverse')
-            | map('items2dict')
+            | map('list')
+            | map('dict')
             | list
           }}
 
