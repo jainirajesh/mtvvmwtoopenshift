@@ -7,7 +7,7 @@
     - vars.yaml
 
   vars:
-    csv_path: "./migration_plan.csv"
+    csv_path: "{{ playbook_dir }}/migration_plan.csv"
 
   tasks:
 
@@ -30,18 +30,20 @@
             map('dict') | list
           }}
 
-    - name: Debug parsed CSV data
+    - name: Show parsed CSV content
       ansible.builtin.debug:
         var: csv_parsed
 
-    - name: Create Migration Plan per VM from CSV
+    - name: Loop over each VM and create Plan
+      vars:
+        selected_vm_name: "{{ item['RHOS Name'] | default('') }}"
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Plan
           metadata:
-            name: "{{ plan_name }}-{{ item['RHOS Name'] | lower | replace(' ', '-') }}"
+            name: "{{ plan_name }}-{{ selected_vm_name | lower | replace(' ', '-') }}"
             namespace: "{{ mtv_namespace }}"
           spec:
             provider:
@@ -69,25 +71,34 @@
             namespace: "{{ mtv_namespace }}"
             targetNamespace: "{{ mtv_namespace }}"
             vms:
-              - name: "{{ item['RHOS Name'] }}"
+              - name: "{{ selected_vm_name }}"
             warm: true
             preserveStaticIPs: true
       loop: "{{ csv_parsed }}"
-      register: created_plans
-
-    - name: Wait for Plans to be created
-      pause:
-        seconds: 5
-
-    - name: Add NetworkMap and StorageMap with owner reference per Plan
-      vars:
-        current_plan: "{{ item.resources[0] }}"
-        nm_name: "{{ network_map_name }}-{{ current_plan.metadata.name }}"
-        sm_name: "{{ storage_map_name }}-{{ current_plan.metadata.name }}"
-      loop: "{{ created_plans.results }}"
       loop_control:
-        label: "{{ item.resources[0].metadata.name }}"
-      tasks:
+        label: "{{ item['RHOS Name'] }}"
+
+    - name: Gather all created plans info
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Plan
+        namespace: "{{ mtv_namespace }}"
+      register: all_plans_info
+
+    - name: Create NetworkMap and StorageMap with owner references per Plan
+      # Loop over all plans to create NetworkMap and StorageMap per plan
+      vars:
+        plan_list: "{{ all_plans_info.resources }}"
+      # Create NetworkMap per plan
+      loop: "{{ plan_list }}"
+      loop_control:
+        loop_var: plan_item
+      block:
+
+        - name: Set plan UID fact
+          ansible.builtin.set_fact:
+            plan_uid: "{{ plan_item.metadata.uid }}"
+            current_plan_name: "{{ plan_item.metadata.name }}"
 
         - name: Create NetworkMap with owner reference
           kubernetes.core.k8s:
@@ -96,13 +107,13 @@
               apiVersion: forklift.konveyor.io/v1beta1
               kind: NetworkMap
               metadata:
-                name: "{{ nm_name }}"
+                name: "{{ network_map_name }}-{{ current_plan_name }}"
                 namespace: "{{ mtv_namespace }}"
                 ownerReferences:
                   - apiVersion: forklift.konveyor.io/v1beta1
                     kind: Plan
-                    name: "{{ current_plan.metadata.name }}"
-                    uid: "{{ current_plan.metadata.uid }}"
+                    name: "{{ current_plan_name }}"
+                    uid: "{{ plan_uid }}"
                     controller: true
                     blockOwnerDeletion: true
               spec:
@@ -133,13 +144,13 @@
               apiVersion: forklift.konveyor.io/v1beta1
               kind: StorageMap
               metadata:
-                name: "{{ sm_name }}"
+                name: "{{ storage_map_name }}-{{ current_plan_name }}"
                 namespace: "{{ mtv_namespace }}"
                 ownerReferences:
                   - apiVersion: forklift.konveyor.io/v1beta1
                     kind: Plan
-                    name: "{{ current_plan.metadata.name }}"
-                    uid: "{{ current_plan.metadata.uid }}"
+                    name: "{{ current_plan_name }}"
+                    uid: "{{ plan_uid }}"
                     controller: true
                     blockOwnerDeletion: true
               spec:
