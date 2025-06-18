@@ -161,6 +161,6 @@
             map:
               - source:
                   type: vmware
-                  name: "{{ parsed_csv[0]['Source Datastore'] | default('') }}"
+                  name: "{{ migration_data[0]['Source Datastore'] | default('') }}"
                 destination:
-                  storageClass: "{{ parsed_csv[0]['Target StorageClass'] | default('') }}"
+                  storageClass: "{{ migration_data[0]['Target StorageClass'] | default('') }}"
