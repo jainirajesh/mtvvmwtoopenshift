@@ -2,18 +2,18 @@
   hosts: localhost
   gather_facts: false
   vars:
-    csv_path: "test_user.csv"
+    csv_path: "test_data.csv"
   tasks:
-    - name: Slurp CSV file contents
+    - name: Read CSV file (base64 encoded)
       ansible.builtin.slurp:
         src: "{{ csv_path }}"
       register: csv_file
 
-    - name: Decode CSV content and split lines
+    - name: Decode and split CSV into lines
       set_fact:
-        csv_lines: "{{ csv_file['content'] | b64decode | splitlines() }}"
+        csv_lines: "{{ csv_file['content'] | b64decode | split('\n') | select('length') | list }}"
 
-    - name: Parse CSV into list of dictionaries
+    - name: Convert CSV lines to list of dicts
       set_fact:
         csv_parsed: >-
           {{
@@ -22,6 +22,6 @@
             map('community.general.dict') | list
           }}
 
-    - name: Display parsed CSV content
+    - name: Show parsed CSV data
       debug:
         var: csv_parsed
