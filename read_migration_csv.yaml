@@ -1,15 +1,33 @@
-- name: Test reading CSV with community.general.read_csv
+- name: Read and parse CSV manually without external collections
   hosts: localhost
   gather_facts: false
+  vars:
+    csv_file: "test_user.csv"
 
   tasks:
-    - name: Read users from CSV file and return a dictionary
-      community.general.read_csv:
-        path: test_user.csv
-        key: name
-      register: users
-      delegate_to: localhost
+    - name: Read raw CSV file
+      ansible.builtin.slurp:
+        src: "{{ csv_file }}"
+      register: raw_csv
 
-    - name: Debug a specific user (e.g., dag)
-      ansible.builtin.debug:
-        msg: "User {{ users.dict['dag'].name }} has UID {{ users.dict['dag'].uid }} and GID {{ users.dict['dag'].gid }}"
+    - name: Decode and split lines
+      set_fact:
+        csv_lines: "{{ raw_csv.content | b64decode | splitlines() | select('length') | list }}"
+
+    - name: Parse CSV into dicts manually
+      set_fact:
+        csv_parsed: >-
+          {{
+            csv_lines[1:] | map('split', ',') |
+            map('zip', (csv_lines[0] | split(','))) |
+            map('to_dict') | list
+          }}
+
+    - name: Debug parsed result
+      debug:
+        var: csv_parsed
+
+    - name: Loop over parsed users
+      debug:
+        msg: "User {{ item.name }} has UID {{ item.uid }} and GID {{ item.gid }}"
+      loop: "{{ csv_parsed }}"
