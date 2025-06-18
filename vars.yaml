@@ -13,3 +13,10 @@ selected_vm_name: "rhel-8"
 network_map_name: "test-networkmap"
 storage_map_name: "test-storagemap"
 plan_name: "{{ selected_vm_name }}-vmware-test"
+
+source_networkmap: "CPMS-External"
+target_network_namespace: "default"
+target_networkmap: "nad"
+
+source_storagemap: "vSAN-Datastore"
+target_storagemap: "lvms-vg1"
