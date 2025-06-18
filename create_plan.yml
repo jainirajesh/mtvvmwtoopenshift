@@ -9,7 +9,7 @@
   tasks:
     - name: Read CSV content (base64)
       slurp:
-        src: "{{ csv_path }}"
+        src: migration_plan.csv
       register: raw_csv
 
     - name: Decode and split CSV into lines
