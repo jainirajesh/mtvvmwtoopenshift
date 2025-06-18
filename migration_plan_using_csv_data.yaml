@@ -22,12 +22,14 @@
         vcenter_password: "{{ vcenter_password }}"
         vcenter_validate_certs: false
       register: vm_list
-
+    
     - name: Read migration data from CSV
       community.general.read_csv:
-        path: migration_plan.csv
+        path: migration.csv
+        key: RHOS Name
       register: migration_data
-    
+      delegate_to: localhost
+       
     - name: Build vm_id map from vCenter data
       set_fact:
         vm_id_map: "{{ vm_id_map | default({}) | combine({ item.name: item.vm }) }}"
