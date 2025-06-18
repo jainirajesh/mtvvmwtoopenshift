@@ -29,7 +29,7 @@
             csv_rows
             | map('split', ',')
             | map('zip', csv_header)
-            | map('map', 'reverse')    # swap pairs to (header, value)
+            | map('map', 'reverse')
             | map('items2dict')
             | list
           }}
