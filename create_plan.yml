@@ -7,7 +7,7 @@
     - vars.yaml
 
   vars:
-    excel_local_path: "{{ playbook_dir }}/migrationplan.xlsx"   # Excel file next to vars.yaml and playbook
+    excel_local_path: "{{ playbook_dir }}/MigrationPlan.xlsx"   # Excel file next to vars.yaml and playbook
     sheet_name: "Sheet1"                               # Change if your sheet name differs
 
   tasks:
