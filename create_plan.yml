@@ -4,7 +4,7 @@
   gather_facts: false
 
   vars_files:
-    - vars.yaml  # define your variables here, e.g. plan_name, mtv_namespace, etc.
+    - vars.yaml
 
   tasks:
 
