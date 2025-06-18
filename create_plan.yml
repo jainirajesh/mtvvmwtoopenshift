@@ -1,43 +1,39 @@
 ---
-- name: VM Migration Plan with multicolumn CSV input
+- name: VM Migration Plan with multicolumn CSV input (AAP compatible)
   hosts: localhost
   gather_facts: false
 
   vars_files:
-    - vars.yaml
+    - vars.yaml  # define your variables here, e.g. plan_name, mtv_namespace, etc.
 
   tasks:
 
-    - name: Load raw CSV file
+    - name: Load raw CSV file as base64
       ansible.builtin.slurp:
         src: migration_plan.csv
       register: raw_csv
 
-    - name: Debug raw CSV content (decoded)
-      debug:
-        msg: "{{ raw_csv.content | b64decode }}"
-
     - name: Decode CSV lines and remove empty lines
-      ansible.builtin.set_fact:
+      set_fact:
         csv_lines: "{{ (raw_csv.content | b64decode).splitlines() | reject('equalto', '') | list }}"
 
-    - name: Debug CSV lines
+    - name: Debug csv_lines to verify CSV content
       debug:
         var: csv_lines
 
-    - name: Extract header and VM data rows
-      ansible.builtin.set_fact:
+    - name: Extract CSV header and rows
+      set_fact:
         csv_header: "{{ csv_lines[0].split(',') | map('trim') | list }}"
         csv_rows: "{{ csv_lines[1:] }}"
 
-    - name: Debug csv_header and csv_rows first line
+    - name: Debug header and first data row
       debug:
         msg:
           header: "{{ csv_header }}"
-          first_row: "{{ csv_rows[0] if csv_rows else 'no rows' }}"
+          first_row: "{{ csv_rows[0] if csv_rows else 'No data rows' }}"
 
-    - name: Convert each CSV row to a dictionary preserving order
-      ansible.builtin.set_fact:
+    - name: Convert CSV rows into list of dictionaries
+      set_fact:
         parsed_csv: >-
           {% set result = [] %}
           {% for row in csv_rows %}
@@ -46,22 +42,22 @@
             {% for i in range(csv_header | length) %}
               {% set key = csv_header[i] %}
               {% set val = values[i] if i < (values | length) else '' %}
-              {% set _ = item.update({key: val | trim}) %}
+              {% set item = item | combine({key: val | trim}) %}
             {% endfor %}
             {% set result = result + [item] %}
           {% endfor %}
           {{ result }}
 
-    - name: Debug structured VM data
-      ansible.builtin.debug:
+    - name: Debug parsed CSV data
+      debug:
         var: parsed_csv
 
     - name: Build Forklift VM list from "RHOS Name" column
-      ansible.builtin.set_fact:
-        vm_list: "{{ parsed_csv | map('extract', attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
+      set_fact:
+        vm_list: "{{ parsed_csv | map(attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
 
-    - name: Debug VM list for migration plan
-      ansible.builtin.debug:
+    - name: Debug VM list
+      debug:
         var: vm_list
 
     - name: Create Forklift Migration Plan
@@ -110,8 +106,8 @@
         namespace: "{{ mtv_namespace }}"
       register: plan_info
 
-    - name: Set Plan UID
-      ansible.builtin.set_fact:
+    - name: Set Plan UID fact
+      set_fact:
         plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
 
     - name: Create NetworkMap with owner reference
@@ -145,10 +141,10 @@
             map:
               - source:
                   type: vmware
-                  name: "{{ parsed_csv[0]['Source Network'] }}"
+                  name: "{{ parsed_csv[0]['Source Network'] | default('') }}"
                 destination:
                   type: multus
-                  name: "{{ parsed_csv[0]['Target Network'] }}"
+                  name: "{{ parsed_csv[0]['Target Network'] | default('') }}"
                   namespace: "{{ target_network_namespace }}"
 
     - name: Create StorageMap with owner reference
@@ -182,6 +178,6 @@
             map:
               - source:
                   type: vmware
-                  name: "{{ parsed_csv[0]['Source Datastore'] }}"
+                  name: "{{ parsed_csv[0]['Source Datastore'] | default('') }}"
                 destination:
-                  storageClass: "{{ parsed_csv[0]['Target StorageClass'] }}"
+                  storageClass: "{{ parsed_csv[0]['Target StorageClass'] | default('') }}"
