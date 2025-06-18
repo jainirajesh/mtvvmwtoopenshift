@@ -3,11 +3,12 @@
   gather_facts: false
 
   tasks:
-    - name: Read CSV file
+    - name: Read users from CSV file and return a dictionary
       community.general.read_csv:
         path: test_user.csv
-      register: csv_output
-
-    - name: Print parsed CSV content
-      debug:
-        var: csv_output.list
+        key: name
+      register: users
+      delegate_to: localhost
+    - ansible.builtin.debug:
+        msg: 'User {{ users.dict.dag.name }} has UID {{ users.dict.dag.uid }} and GID {{ users.dict.dag.gid }}'
+# Read a CSV file and access the first item
