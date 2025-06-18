@@ -1,31 +1,13 @@
-- name: Read migration plan data from CSV and display
+- name: Test reading CSV with community.general.read_csv
   hosts: localhost
   gather_facts: false
-  vars:
-    csv_file_path: migration_plan.csv
 
   tasks:
-    - name: Read raw CSV file
-      ansible.builtin.slurp:
-        src: "{{ csv_file_path }}"
-      register: raw_csv
+    - name: Read CSV file
+      community.general.read_csv:
+        path: test_user.csv
+      register: csv_output
 
-    - name: Decode and split CSV content into lines (skip empty lines)
-      set_fact:
-        csv_lines: "{{ raw_csv.content | b64decode | split('\n') | reject('equalto', '') | list }}"
-
-    - name: Convert CSV lines to list of dictionaries
-      set_fact:
-        csv_parsed: >-
-          {{
-            csv_lines[1:] 
-            | map('split', ',') 
-            | map('zip', csv_lines[0] | split(',')) 
-            | map('community.general.dict') 
-            | list
-          }}
-
-    - name: Print each migration row as a dictionary
+    - name: Print parsed CSV content
       debug:
-        msg: "{{ item }}"
-      loop: "{{ csv_parsed }}"
+        var: csv_output.list
