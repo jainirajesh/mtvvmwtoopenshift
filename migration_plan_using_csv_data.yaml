@@ -1,53 +1,47 @@
----
-- name: VM Migration Plans from CSV
+- name: Read CSV and create migration plans
   hosts: localhost
   gather_facts: false
-
   vars:
-    vcenter_hostname: "10.60.38.189"
-    vcenter_username: "vcenter.testing@ngcs-lab.local"
-    vcenter_password: "tyv-XFZ1ehb0wcy!tdw"
-    mtv_namespace: "openshift-mtv"
     source_provider_name: "vmware"
     destination_provider_name: "host"
+    mtv_namespace: "openshift-mtv"
     network_map_name: "test-networkmap"
     storage_map_name: "test-storagemap"
 
   tasks:
 
-    - name: Get list of all VMs in vCenter
-      vmware.vmware_rest.vcenter_vm_info:
-        vcenter_hostname: "{{ vcenter_hostname }}"
-        vcenter_username: "{{ vcenter_username }}"
-        vcenter_password: "{{ vcenter_password }}"
-        vcenter_validate_certs: false
-      register: vm_list
-    
-    - name: Read migration data from CSV
-      community.general.read_csv:
-        path: migration_plan.csv
-        key: RHOS Name
-      register: migration_data
-      delegate_to: localhost
-       
-    - name: Build vm_id map from vCenter data
+    - name: Read CSV file
+      ansible.builtin.slurp:
+        src: migration_plan.csv
+      register: raw_csv
+
+    - name: Decode CSV content
       set_fact:
-        vm_id_map: "{{ vm_id_map | default({}) | combine({ item.name: item.vm }) }}"
-      loop: "{{ vm_list.value }}"
+        csv_lines: "{{ raw_csv.content | b64decode | split('\n') | select('length') | list }}"
 
-    - name: Loop through CSV and create plans
-      block:
-        - name: Set per-item vars
-          set_fact:
-            selected_vm_name: "{{ item['RHOS Name'] }}"
-            selected_vm_id: "{{ vm_id_map[item['RHOS Name']] }}"
-            plan_name: "{{ item['Plan Name'] }}"
-            network_map_full: "{{ network_map_name }}-{{ item['Plan Name'] }}"
-            storage_map_full: "{{ storage_map_name }}-{{ item['Plan Name'] }}"
-            keep_ip: "{{ item['Keep IP'] | lower == 'yes' }}"
-            is_warm: "{{ item['Cold or Warm'] | lower == 'warm' }}"
+    - name: Convert CSV to list of dicts
+      set_fact:
+        csv_parsed: >-
+          {{
+            csv_lines[1:] | map('split', ',') |
+            map('zip', csv_lines[0] | split(',')) |
+            map('community.general.dict') | list
+          }}
 
-        - name: Create Migration Plan
+    - name: Loop through CSV rows to create migration plans
+      vars:
+        plan_name: "{{ item['Plan Name'] }}"
+        selected_vm_name: "{{ item['RHOS Name'] }}"
+        target_namespace: "{{ item['Target Namespace'] }}"
+        target_storage: "{{ item['Target Storage'] }}"
+        cold_or_warm: "{{ item['Cold or Warm'] }}"
+        keep_ip: "{{ item['Keep IP'] | lower == 'yes' }}"
+      loop: "{{ csv_parsed }}"
+      loop_control:
+        label: "{{ item['RHOS Name'] }}"
+      tasks:
+
+        - name: Create migration plan for {{ selected_vm_name }}
           kubernetes.core.k8s:
             state: present
             definition:
@@ -72,105 +66,16 @@
                   network:
                     apiVersion: forklift.konveyor.io/v1beta1
                     kind: NetworkMap
-                    name: "{{ network_map_full }}"
+                    name: "{{ network_map_name }}"
                     namespace: "{{ mtv_namespace }}"
                   storage:
                     apiVersion: forklift.konveyor.io/v1beta1
                     kind: StorageMap
-                    name: "{{ storage_map_full }}"
+                    name: "{{ storage_map_name }}"
                     namespace: "{{ mtv_namespace }}"
                 namespace: "{{ mtv_namespace }}"
-                targetNamespace: "{{ item['Target Namespace'] }}"
+                targetNamespace: "{{ target_namespace }}"
                 vms:
-                  - id: "{{ selected_vm_id }}"
-                    name: "{{ selected_vm_name }}"
-                warm: "{{ is_warm }}"
+                  - name: "{{ selected_vm_name }}"
+                warm: "{{ cold_or_warm | lower == 'warm' }}"
                 preserveStaticIPs: "{{ keep_ip }}"
-
-        - name: Get Plan UID
-          kubernetes.core.k8s_info:
-            api_version: forklift.konveyor.io/v1beta1
-            kind: Plan
-            name: "{{ plan_name }}"
-            namespace: "{{ mtv_namespace }}"
-          register: plan_info
-
-        - name: Set Plan UID
-          set_fact:
-            plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
-
-        - name: Create NetworkMap with owner reference
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: forklift.konveyor.io/v1beta1
-              kind: NetworkMap
-              metadata:
-                name: "{{ network_map_full }}"
-                namespace: "{{ mtv_namespace }}"
-                ownerReferences:
-                  - apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Plan
-                    name: "{{ plan_name }}"
-                    uid: "{{ plan_uid }}"
-                    controller: true
-                    blockOwnerDeletion: true
-              spec:
-                provider:
-                  source:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ source_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                  destination:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ destination_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                map:
-                  - destination:
-                      name: "nad"
-                      namespace: "default"
-                      type: "multus"
-                    source:
-                      type: vmware
-                      name: "CPMS-External"
-
-        - name: Create StorageMap with owner reference
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: forklift.konveyor.io/v1beta1
-              kind: StorageMap
-              metadata:
-                name: "{{ storage_map_full }}"
-                namespace: "{{ mtv_namespace }}"
-                ownerReferences:
-                  - apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Plan
-                    name: "{{ plan_name }}"
-                    uid: "{{ plan_uid }}"
-                    controller: true
-                    blockOwnerDeletion: true
-              spec:
-                provider:
-                  source:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ source_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                  destination:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ destination_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                map:
-                  - source:
-                      type: vmware
-                      name: "vSAN-Datastore"  # Can be overridden later
-                    destination:
-                      storageClass: "{{ item['Target Storage'] }}"
-
-      loop: "{{ migration_data.list }}"
-      loop_control:
-        label: "{{ item['Plan Name'] }}"
