@@ -15,7 +15,7 @@
 
     - name: Decode CSV lines and remove empty lines
       ansible.builtin.set_fact:
-        csv_lines: "{{ raw_csv.content | b64decode | split('\n') | reject('equalto', '') | list }}"
+        csv_lines: "{{ (raw_csv.content | b64decode).splitlines() | reject('equalto', '') | list }}"
 
     - name: Extract header and VM data
       ansible.builtin.set_fact:
