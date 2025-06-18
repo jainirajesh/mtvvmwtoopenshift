@@ -4,7 +4,7 @@
   tasks:
     - name: Read CSV file
       community.general.read_csv:
-        path: test_users.csv
+        path: test_user.csv
         key: name
       register: csv_data
 
