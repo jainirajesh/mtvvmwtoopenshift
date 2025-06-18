@@ -2,7 +2,7 @@
   hosts: localhost
   gather_facts: false
   vars:
-    csv_path: "test_data.csv"
+    csv_path: "test_user.csv"
   tasks:
     - name: Read CSV file (base64 encoded)
       ansible.builtin.slurp:
