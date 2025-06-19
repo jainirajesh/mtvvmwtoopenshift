@@ -34,21 +34,13 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Initialize empty plans_with_vms dict
-      set_fact:
-        plans_with_vms: {}
-
     - name: Build VM list with RHOS Name and VM ID for each plan
       set_fact:
         plans_with_vms: >-
           {{
-            plans_with_vms | combine({
+            plans_with_vms | default({}) | combine({
               item.key: {
-                'vms': (
-                  item.value | map('extract', attribute='RHOS Name') | zip(
-                    item.value | map('extract', attribute='VM ID')
-                  ) | map('community.general.dict_kv', 'name=id') | list
-                ),
+                'vms': item.value | map('extract_vm_info') | list,
                 'rows': item.value
               }
             })
@@ -56,6 +48,15 @@
       loop: "{{ plans_dict | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
+      vars:
+        # Inline custom filter logic using Jinja2
+        extract_vm_info: >-
+          {% set result = [] -%}
+          {% for vm in item.value -%}
+            {% set vm_obj = {'name': vm['RHOS Name'], 'id': vm['VM ID']} %}
+            {% set _ = result.append(vm_obj) %}
+          {% endfor -%}
+          {{ result }}
 
     - name: Loop over each plan and create them with VMs
       include_tasks: create_single_plan.yaml
