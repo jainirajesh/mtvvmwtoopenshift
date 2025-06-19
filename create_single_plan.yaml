@@ -1,8 +1,8 @@
 - name: Set per-plan variables
   set_fact:
     plan_name: "{{ plan_group.key }}"
+    plan_rows: "{{ plan_group.value.rows }}"
     vm_list: "{{ plan_group.value.vms }}"
-    full_data: "{{ plan_group.value.rows }}"
 
 - name: Create NetworkMap
   kubernetes.core.k8s:
@@ -102,7 +102,7 @@
 - name: Wait for migration plan to become Ready
   register: plan_info
   retries: 5
-  delay: 3
+  delay: 5
   until: >
     plan_info.resources[0].status.conditions is defined and
     (
