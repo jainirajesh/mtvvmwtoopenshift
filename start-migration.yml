@@ -1,24 +1,24 @@
 ---
-- name: Start Migration Plan
+- name: Start Multiple Migration Plans from Survey
   hosts: localhost
   gather_facts: false
   vars_files:
-    - vars.yaml  # Your external variables, like namespace, etc.
+    - vars.yaml  # Optional external vars
 
-  tasks:  
-    - name: Start Migration Plans
+  tasks:
+    - name: Start Migration Plan "{{ item }}"
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            name: "{{ item }}"  # Use the item from the loop as the plan name
+            generateName: "{{ item }}-migration-"
             namespace: openshift-mtv
           spec:
             plan:
-              name: "{{ item }}"  # Plan name from loop
+              name: "{{ item }}"
               namespace: openshift-mtv
-      loop: "{{ plan_names.split(',') }}"  # Split the 'plan_names' string into a list
+      loop: "{{ plan_names.split(',') | map('trim') | list }}"
       loop_control:
         loop_var: item
