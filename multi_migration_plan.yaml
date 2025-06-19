@@ -1,145 +1,41 @@
-- name: Set plan variables
-  set_fact:
-    current_plan_name: "{{ plan_group.key }}"
-    current_vm_list: "{{ plan_group.value | map(attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
-    current_namespace: "{{ plan_group.value[0]['Target Namespace'] }}"
-    current_storage: "{{ plan_group.value[0]['Target Storage'] }}"
-    is_warm: "{{ plan_group.value[0]['Cold or Warm'] == 'warm' }}"
-    keep_ip: "{{ plan_group.value[0]['Keep IP'] == 'yes' }}"
+- name: Create multiple migration plans from CSV
+  hosts: localhost
+  gather_facts: false
 
-- name: Check if plan already exists
-  kubernetes.core.k8s_info:
-    api_version: forklift.konveyor.io/v1beta1
-    kind: Plan
-    name: "{{ current_plan_name }}"
-    namespace: "{{ mtv_namespace }}"
-  register: plan_check
-  ignore_errors: true
+  vars_files:
+    - vars.yaml
 
-- name: Create MigrationPlan if not exists
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: forklift.konveyor.io/v1beta1
-      kind: Plan
-      metadata:
-        name: "{{ current_plan_name }}"
-        namespace: "{{ mtv_namespace }}"
-      spec:
-        provider:
-          source:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: Provider
-            name: "{{ source_provider_name }}"
-            namespace: "{{ mtv_namespace }}"
-          destination:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: Provider
-            name: "{{ destination_provider_name }}"
-            namespace: "{{ mtv_namespace }}"
-        map:
-          network:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: NetworkMap
-            name: "{{ network_map_name }}-{{ current_plan_name }}"
-            namespace: "{{ target_network_namespace }}"
-          storage:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: StorageMap
-            name: "{{ storage_map_name }}-{{ current_plan_name }}"
-            namespace: "{{ mtv_namespace }}"
-        namespace: "{{ mtv_namespace }}"
-        targetNamespace: "{{ mtv_namespace }}"
-        vms: "{{ current_vm_list }}"
-        warm: "{{ is_warm }}"
-        preserveStaticIPs: "{{ keep_ip }}"
-  when: plan_check.resources | length == 0
+  tasks:
+    - name: Read CSV content (base64)
+      slurp:
+        src: migration_plan.csv
+      register: raw_csv
 
-- name: Debug skipped plan
-  debug:
-    msg: "Plan '{{ current_plan_name }}' already exists, skipping creation."
-  when: plan_check.resources | length > 0
+    - name: Decode and split CSV into lines
+      set_fact:
+        csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
 
-- name: Get Plan UID
-  kubernetes.core.k8s_info:
-    api_version: forklift.konveyor.io/v1beta1
-    kind: Plan
-    name: "{{ current_plan_name }}"
-    namespace: "{{ mtv_namespace }}"
-  register: plan_info
+    - name: Extract CSV headers
+      set_fact:
+        csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
 
-- name: Set Plan UID
-  set_fact:
-    plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
+    - name: Parse each row into a dictionary
+      set_fact:
+        all_rows: "{{ all_rows | default([]) + [dict(csv_headers | zip(row.split(',') | map('trim') | list))] }}"
+      loop: "{{ csv_lines[1:] }}"
+      loop_control:
+        loop_var: row
+      when: row.strip() != ''
 
-- name: Create NetworkMap with ownerReference
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: forklift.konveyor.io/v1beta1
-      kind: NetworkMap
-      metadata:
-        name: "{{ network_map_name }}-{{ current_plan_name }}"
-        namespace: "{{ target_network_namespace }}"
-        ownerReferences:
-          - apiVersion: forklift.konveyor.io/v1beta1
-            kind: Plan
-            name: "{{ current_plan_name }}"
-            uid: "{{ plan_uid }}"
-            controller: true
-            blockOwnerDeletion: true
-      spec:
-        provider:
-          source:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: Provider
-            name: "{{ source_provider_name }}"
-            namespace: "{{ mtv_namespace }}"
-          destination:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: Provider
-            name: "{{ destination_provider_name }}"
-            namespace: "{{ mtv_namespace }}"
-        map:
-          - destination:
-              name: "{{ target_networkmap }}"
-              namespace: "{{ target_network_namespace }}"
-              type: multus
-            source:
-              type: vmware
-              name: "{{ source_networkmap }}"
+    - name: Group VMs by Plan Name
+      set_fact:
+        plans_dict: "{{ plans_dict | default({}) | combine({ item['Plan Name']: (plans_dict[item['Plan Name']] | default([])) + [item] }) }}"
+      loop: "{{ all_rows }}"
+      loop_control:
+        label: "{{ item['Plan Name'] }}"
 
-- name: Create StorageMap with ownerReference
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: forklift.konveyor.io/v1beta1
-      kind: StorageMap
-      metadata:
-        name: "{{ storage_map_name }}-{{ current_plan_name }}"
-        namespace: "{{ mtv_namespace }}"
-        ownerReferences:
-          - apiVersion: forklift.konveyor.io/v1beta1
-            kind: Plan
-            name: "{{ current_plan_name }}"
-            uid: "{{ plan_uid }}"
-            controller: true
-            blockOwnerDeletion: true
-      spec:
-        provider:
-          source:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: Provider
-            name: "{{ source_provider_name }}"
-            namespace: "{{ mtv_namespace }}"
-          destination:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: Provider
-            name: "{{ destination_provider_name }}"
-            namespace: "{{ mtv_namespace }}"
-        map:
-          - source:
-              type: vmware
-              name: "{{ source_storagemap }}"
-            destination:
-              storageClass: "{{ target_storagemap }}"
+    - name: Loop over each plan group and create them
+      include_tasks: create_single_plan.yaml
+      loop: "{{ plans_dict | dict2items }}"
+      loop_control:
+        loop_var: plan_group
