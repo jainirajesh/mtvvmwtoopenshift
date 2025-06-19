@@ -1,3 +1,7 @@
+- name: DEBUG plan_group
+  debug:
+    var: plan_group
+
 - name: Set per-plan variables
   set_fact:
     plan_name: "{{ plan_group.key }}"
