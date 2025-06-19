@@ -3,10 +3,9 @@
   gather_facts: false
 
   vars_files:
-    - vars.yaml  # contains variables like plan_name, mtv_namespace, etc.
+    - vars.yaml  # <-- External vars like plan_name, mtv_namespace, etc.
 
   tasks:
-
     - name: Read CSV content (base64)
       slurp:
         src: migration_plan.csv
@@ -140,6 +139,53 @@
             vms: "{{ vm_list }}"
             warm: true
             preserveStaticIPs: true
+
+    ##################################################################
+    ## STEP 4: Wait until Plan becomes Ready
+    ##################################################################
+    - name: Wait for migration plan to become Ready
+      register: plan_info
+      retries: 15
+      delay: 5
+      until: >
+        plan_info.resources[0].status.conditions is defined and
+        (
+          plan_info.resources[0].status.conditions
+          | selectattr('type', 'equalto', 'Ready')
+          | selectattr('status', 'equalto', 'True')
+          | list | length
+        ) > 0
+      failed_when: plan_info.resources | length == 0
+      delegate_to: localhost
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Plan
+        name: "{{ plan_name }}"
+        namespace: "{{ mtv_namespace }}"
+
+    ##################################################################
+    ## STEP 5: Add ownerReferences to the Maps (Optional Cleanup Logic)
+    ##################################################################
+    - name: Set Plan UID
+      set_fact:
+        plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
+
+    - name: Patch NetworkMap with ownerReferences
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: NetworkMap
+          metadata:
+            name: "{{ network_map_name }}-{{ plan_name }}"
+            namespace: "{{ mtv_namespace }}"
+            ownerReferences:
+              - apiVersion: forklift.konveyor.io/v1beta1
+                kind: Plan
+                name: "{{ plan_name }}"
+                uid: "{{ plan_uid }}"
+                controller: true
+                blockOwnerDeletion: true
 
     - name: Patch StorageMap with ownerReferences
       kubernetes.core.k8s:
