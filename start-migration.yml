@@ -3,22 +3,9 @@
   hosts: localhost
   gather_facts: false
   vars_files:
-    - vars.yaml  # External vars like mtv_namespace, etc.
+    - vars.yaml  # Your external variables, like namespace, etc.
 
-  vars_prompt:
-    - name: plan_names
-      prompt: "Enter the comma-separated list of plan names (e.g., plan-1,plan-2)"
-      private: no  # Don't hide input
-      default: ""  # Default to an empty string if nothing is entered
-
-  tasks:
-    - name: Check if plan_names is provided
-      assert:
-        that:
-          - plan_names != ''
-        fail_msg: "You must provide at least one plan name."
-        success_msg: "Proceeding with the provided plan names."
-
+  tasks:  
     - name: Start Migration Plans
       kubernetes.core.k8s:
         state: present
@@ -26,12 +13,12 @@
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            name: "{{ item }}"  # Use item from loop as plan name
+            name: "{{ item }}"  # Use the item from the loop as the plan name
             namespace: openshift-mtv
           spec:
             plan:
               name: "{{ item }}"  # Plan name from loop
               namespace: openshift-mtv
-      loop: "{{ plan_names.split(',') | map('trim') | list }}"  # Split and trim spaces from the input
+      loop: "{{ plan_names.split(',') }}"  # Split the 'plan_names' string into a list
       loop_control:
         loop_var: item
