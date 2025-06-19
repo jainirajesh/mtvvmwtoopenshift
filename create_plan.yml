@@ -40,17 +40,17 @@
     # Step 6: Group VMs by Plan Name
     - name: Group VMs by Plan Name
       set_fact:
-        vms_by_plan: "{{ migration_data | groupby('Plan Name') | map(attribute='1') | zip(migration_data | groupby('Plan Name') | map(attribute='0')) | list | map('combine', [{'plan_name': item[0], 'vms': item[1]}]) }}"
-      
+        vms_by_plan: "{{ migration_data | groupby('Plan Name') }}"
+
     # Step 7: Create NetworkMap for each Plan
-    - name: Create NetworkMap
+    - name: Create NetworkMap for each Plan
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: NetworkMap
           metadata:
-            name: "{{ network_map_name }}-{{ item.plan_name }}"
+            name: "{{ network_map_name }}-{{ item.0 }}"
             namespace: "{{ mtv_namespace }}"
           spec:
             provider:
@@ -77,14 +77,14 @@
         loop_var: item
 
     # Step 8: Create StorageMap for each Plan
-    - name: Create StorageMap
+    - name: Create StorageMap for each Plan
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: StorageMap
           metadata:
-            name: "{{ storage_map_name }}-{{ item.plan_name }}"
+            name: "{{ storage_map_name }}-{{ item.0 }}"
             namespace: "{{ mtv_namespace }}"
           spec:
             provider:
@@ -117,7 +117,7 @@
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Plan
           metadata:
-            name: "{{ item.plan_name }}"
+            name: "{{ item.0 }}"
             namespace: "{{ mtv_namespace }}"
           spec:
             provider:
@@ -135,16 +135,16 @@
               network:
                 apiVersion: forklift.konveyor.io/v1beta1
                 kind: NetworkMap
-                name: "{{ network_map_name }}-{{ item.plan_name }}"
+                name: "{{ network_map_name }}-{{ item.0 }}"
                 namespace: "{{ mtv_namespace }}"
               storage:
                 apiVersion: forklift.konveyor.io/v1beta1
                 kind: StorageMap
-                name: "{{ storage_map_name }}-{{ item.plan_name }}"
+                name: "{{ storage_map_name }}-{{ item.0 }}"
                 namespace: "{{ mtv_namespace }}"
             namespace: "{{ mtv_namespace }}"
             targetNamespace: "{{ mtv_namespace }}"
-            vms: "{{ item.vms | map(attribute='VM ID') | list }}"  # Get VM IDs for the vms field
+            vms: "{{ item.1 | map(attribute='VM ID') | list }}"  # Get VM IDs for the vms field
             warm: true
             preserveStaticIPs: true
 
