@@ -144,7 +144,12 @@
                 namespace: "{{ mtv_namespace }}"
             namespace: "{{ mtv_namespace }}"
             targetNamespace: "{{ mtv_namespace }}"
-            vms: "{{ item.1 | map(attribute='VM ID') | list }}"  # Get VM IDs for the vms field
+            vms: >
+              {% set vm_list = [] %}
+              {% for vm in item.1 %}
+                {% set vm_list = vm_list + [{'vmID': vm['VM ID']}] %}
+              {% endfor %}
+              {{ vm_list }}
             warm: true
             preserveStaticIPs: true
 
