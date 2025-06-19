@@ -1,3 +1,5 @@
 Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS,Plan Name,Target Namespace,Target Storage,Cold or Warm,Keep IP 
 1,rhel-8,vm-30818,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),plan-1,openshift-mtv,lvms-vg1,warm,yes 
-2,rhel-8-clone,vm-30822,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),plan-2,openshift-mtv,lvms-vg1,warm,yes
+2,rhel-8-clone,vm-30822,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),plan-1,openshift-mtv,lvms-vg1,warm,yes
+3,linux-1,vm-31039,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),plan-2,openshift-mtv,lvms-vg1,warm,yes 
+4,win-1,vm-31040,1,group-1,1,prod,Microsoft Windows Server 2019 (64-bit),plan-2,openshift-mtv,lvms-vg1,warm,yes
