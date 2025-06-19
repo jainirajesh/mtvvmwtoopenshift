@@ -1,8 +1,6 @@
----
 - name: VM Migration Plan with manual CSV parsing (AAP compatible)
   hosts: localhost
   gather_facts: false
-
   vars_files:
     - vars.yaml  # External vars like plan_name, mtv_namespace, etc.
 
@@ -143,7 +141,7 @@
             namespace: "{{ mtv_namespace }}"
             targetNamespace: "{{ mtv_namespace }}"
             vms:
-              - "{{ item.1 | default([]) | map(attribute='VM ID') | map('regex_replace', '^(.+)$', '\\1') | map('dict', {'vmID': item}) | list }}"
+              - "{{ item.1 | map(attribute='VM ID') | map('regex_replace', '^(.+)$', '\\1') | map('community.general.dict', {'vmID': '\\1'}) | list }}"
             warm: true
             preserveStaticIPs: true
       loop: "{{ vms_by_plan }}"
