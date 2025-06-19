@@ -65,8 +65,7 @@
                   namespace: "{{ target_network_namespace }}"
                   type: "multus"
                 source:
-                  type: vmware
-                  name: "{{ source_networkmap }}"
+                  id: "{{ source_networkmap_id  }}"
 
     ##################################################################
     ## STEP 2: Create StorageMap
@@ -145,8 +144,8 @@
     ##################################################################
     - name: Wait for migration plan to become Ready
       register: plan_info
-      retries: 15
-      delay: 5
+      retries: 5
+      delay: 3
       until: >
         plan_info.resources[0].status.conditions is defined and
         (
