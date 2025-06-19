@@ -141,54 +141,6 @@
             warm: true
             preserveStaticIPs: true
 
-    ##################################################################
-    ## STEP 4: Wait for Plan to become Ready
-    ##################################################################
-    - name: Wait for migration plan to become Ready
-      retries: 15
-      delay: 5
-      until: plan_ready | length > 0
-      vars:
-        plan_ready: >-
-          {{
-            plan_info.resources[0].status.conditions
-            | selectattr('type', 'equalto', 'Ready')
-            | selectattr('status', 'equalto', 'True')
-            | list
-          }}
-      block:
-        - name: Re-check Plan status
-          kubernetes.core.k8s_info:
-            api_version: forklift.konveyor.io/v1beta1
-            kind: Plan
-            name: "{{ plan_name }}"
-            namespace: "{{ mtv_namespace }}"
-          register: plan_info
-
-    ##################################################################
-    ## STEP 5: Patch NetworkMap and StorageMap with ownerReferences (optional)
-    ##################################################################
-    - name: Set Plan UID fact
-      set_fact:
-        plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
-
-    - name: Patch NetworkMap with ownerReferences
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: forklift.konveyor.io/v1beta1
-          kind: NetworkMap
-          metadata:
-            name: "{{ network_map_name }}-{{ plan_name }}"
-            namespace: "{{ mtv_namespace }}"
-            ownerReferences:
-              - apiVersion: forklift.konveyor.io/v1beta1
-                kind: Plan
-                name: "{{ plan_name }}"
-                uid: "{{ plan_uid }}"
-                controller: true
-                blockOwnerDeletion: true
-
     - name: Patch StorageMap with ownerReferences
       kubernetes.core.k8s:
         state: present
