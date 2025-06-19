@@ -1,0 +1,8 @@
+- name: Set plan variables
+  set_fact:
+    current_plan_name: "{{ plan_group.key }}"
+    current_vm_list: "{{ plan_group.value | map(attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
+    current_namespace: "{{ plan_group.value[0]['Target Namespace'] }}"
+    current_storage: "{{ plan_group.value[0]['Target Storage'] }}"
+    is_warm: "{{ plan_group.value[0]['Cold or Warm'] == 'warm' }}"
+    keep_ip: "{{ plan_group.value[0]['Keep IP'] == 'yes' }}"
