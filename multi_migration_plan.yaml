@@ -8,7 +8,7 @@
   tasks:
     - name: Read CSV content (base64)
       slurp:
-        src: vm_list_to_migrate.csv
+        src: migration_plan.csv
       register: raw_csv
 
     - name: Decode and split CSV into lines
@@ -33,6 +33,26 @@
       loop: "{{ all_rows }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
+
+    - name: Build VM list with RHOS Name and VM ID for each plan
+      set_fact:
+        plans_with_vms: >-
+          {{
+            plans_with_vms | default({}) |
+            combine({
+              item.key: {
+                'vms': item.value |
+                       map('extract', ['RHOS Name', 'VM ID']) |
+                       map('zip', ['name', 'id']) |
+                       map('items2dict') | list,
+                'rows': item.value
+              }
+            })
+          }}
+      loop: "{{ plans_dict | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+      when: item.value | length > 0
 
     - name: Loop over each plan and create them with VMs
       include_tasks: create_single_plan.yaml
