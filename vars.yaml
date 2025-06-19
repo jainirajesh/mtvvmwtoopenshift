@@ -15,6 +15,7 @@ storage_map_name: "test-storagemap"
 plan_name: "{{ selected_vm_name }}-vmware-test"
 
 source_networkmap: "CPMS-External"
+source_networkmap_id: dvportgroup-1008
 target_network_namespace: "default"
 target_networkmap: "nad"
 
