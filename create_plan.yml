@@ -1,9 +1,10 @@
+---
 - name: VM Migration Plan with manual CSV parsing (AAP compatible)
   hosts: localhost
   gather_facts: false
 
   vars_files:
-    - vars.yaml  # <-- External vars like plan_name, mtv_namespace, etc.
+    - vars.yaml  # External vars like plan_name, mtv_namespace, etc.
 
   tasks:
     - name: Read CSV content (base64)
@@ -31,9 +32,9 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Build Forklift VM list from "RHOS Name" column
+    - name: Group VMs by Plan Name
       set_fact:
-        vm_list: "{{ migration_data | map(attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
+        vms_by_plan: "{{ migration_data | groupby('Plan Name') | map(attribute='1') | zip(migration_data | groupby('Plan Name') | map(attribute='0')) | list | map('combine', [{'plan_name': item[0], 'vms': item[1]}]) }}"
 
     ##################################################################
     ## STEP 1: Create NetworkMap
@@ -45,7 +46,7 @@
           apiVersion: forklift.konveyor.io/v1beta1
           kind: NetworkMap
           metadata:
-            name: "{{ network_map_name }}-{{ plan_name }}"
+            name: "{{ network_map_name }}-{{ item.plan_name }}"
             namespace: "{{ mtv_namespace }}"
           spec:
             provider:
@@ -77,7 +78,7 @@
           apiVersion: forklift.konveyor.io/v1beta1
           kind: StorageMap
           metadata:
-            name: "{{ storage_map_name }}-{{ plan_name }}"
+            name: "{{ storage_map_name }}-{{ item.plan_name }}"
             namespace: "{{ mtv_namespace }}"
           spec:
             provider:
@@ -99,7 +100,7 @@
                   storageClass: "{{ target_storagemap }}"
 
     ##################################################################
-    ## STEP 3: Create Plan
+    ## STEP 3: Create Forklift Migration Plan
     ##################################################################
     - name: Create Forklift Migration Plan
       kubernetes.core.k8s:
@@ -108,7 +109,7 @@
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Plan
           metadata:
-            name: "{{ plan_name }}"
+            name: "{{ item.plan_name }}"
             namespace: "{{ mtv_namespace }}"
           spec:
             provider:
@@ -126,16 +127,16 @@
               network:
                 apiVersion: forklift.konveyor.io/v1beta1
                 kind: NetworkMap
-                name: "{{ network_map_name }}-{{ plan_name }}"
+                name: "{{ network_map_name }}-{{ item.plan_name }}"
                 namespace: "{{ mtv_namespace }}"
               storage:
                 apiVersion: forklift.konveyor.io/v1beta1
                 kind: StorageMap
-                name: "{{ storage_map_name }}-{{ plan_name }}"
+                name: "{{ storage_map_name }}-{{ item.plan_name }}"
                 namespace: "{{ mtv_namespace }}"
             namespace: "{{ mtv_namespace }}"
             targetNamespace: "{{ mtv_namespace }}"
-            vms: "{{ vm_list }}"
+            vms: "{{ item.vms | map(attribute='VM ID') | list }}"  # Get VM IDs for the vms field
             warm: true
             preserveStaticIPs: true
 
