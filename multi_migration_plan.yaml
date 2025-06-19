@@ -36,23 +36,22 @@
 
     - name: Build VM list with RHOS Name and VM ID for each plan
       set_fact:
-        plans_with_vms: >-
-          {{
-            plans_with_vms | default({}) |
-            combine({
-              item.key: {
-                'vms': item.value |
-                       map('extract', ['RHOS Name', 'VM ID']) |
-                       map('zip', ['name', 'id']) |
-                       map('items2dict') | list,
-                'rows': item.value
-              }
-            })
-          }}
+        plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: { 'vms': vm_list, 'rows': item.value } }) }}"
       loop: "{{ plans_dict | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
-      when: item.value | length > 0
+      vars:
+        vm_list: >-
+          {{
+            item.value | map('extract_vm') | list
+          }}
+        extract_vm: >-
+          {% filter from_yaml %}
+          {% for vm in item.value %}
+          - name: {{ vm['RHOS Name'] }}
+            id: {{ vm['VM ID'] }}
+          {% endfor %}
+          {% endfilter %}
 
     - name: Loop over each plan and create them with VMs
       include_tasks: create_single_plan.yaml
