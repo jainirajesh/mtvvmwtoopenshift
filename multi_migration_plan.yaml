@@ -36,18 +36,15 @@
 
     - name: Build VM list with RHOS Name and VM ID for each plan
       set_fact:
-        plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: { 'vms': item.value | map('extract_rhos_vm') | list, 'rows': item.value } }) }}"
+        plans_with_vms: >-
+          {{
+            plans_with_vms | default({}) | combine({
+              item.key: {
+                'vms': item.value | map('community.general.dict_kv', 'name=id', attribute1='RHOS Name', attribute2='VM ID') | list,
+                'rows': item.value
+              }
+            })
+          }}
       loop: "{{ plans_dict | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
-      vars:
-        extract_rhos_vm: >-
-          {{
-            lambda vm: {'name': vm['RHOS Name'], 'id': vm['VM ID']}
-          }}
-
-    - name: Loop over each plan and create them with VMs
-      include_tasks: create_single_plan.yaml
-      loop: "{{ plans_with_vms | dict2items }}"
-      loop_control:
-        loop_var: plan_group
