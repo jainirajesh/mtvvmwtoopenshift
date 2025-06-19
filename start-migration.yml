@@ -2,33 +2,21 @@
 - name: Start Migration Plan
   hosts: localhost
   gather_facts: false
-  vars:
-    vcenter_hostname: "10.60.38.189"
-    vcenter_username: "vcenter.testing@ngcs-lab.local"
-    vcenter_password: "tyv-XFZ1ehb0wcy!tdw"
-
-    mtv_namespace: "openshift-mtv"
-    source_provider_name: "vmware"
-    destination_provider_name: "host"
-
-    selected_vm_id: "vm-30730"
-    selected_vm_name: "rhel-8"
-
-    network_map_name: "test-networkmap"
-    storage_map_name: "test-storagemap"
-    plan_name: "{{ selected_vm_name }}-vmware-test"
+  vars_files:
+    - vars.yaml
 
   tasks:  
-    - name: Start Migration Plan
+    - name: Start Migration Plans
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            name: rhel-8-vmware-test
+            name: "{{ item }}"   # Use item as plan name
             namespace: openshift-mtv
           spec:
             plan:
-              name: rhel-8-vmware-test
+              name: "{{ item }}"  # Plan name from loop
               namespace: openshift-mtv
+      loop: "{{ plan_names.split(',') }}"  # Split the extra var into a list and loop over it
