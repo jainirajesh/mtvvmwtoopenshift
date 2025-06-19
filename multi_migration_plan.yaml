@@ -40,7 +40,7 @@
           {{
             plans_with_vms | default({}) | combine({
               item.key: {
-                'vms': item.value | map('community.general.dict_kv', 'name=id', attribute1='RHOS Name', attribute2='VM ID') | list,
+                'vms': item.value | map('extract', ['RHOS Name', 'VM ID']) | map('zip', ['name', 'id']) | map('items2dict') | list,
                 'rows': item.value
               }
             })
@@ -48,3 +48,4 @@
       loop: "{{ plans_dict | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
+
