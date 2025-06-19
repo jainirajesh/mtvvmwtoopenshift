@@ -2,11 +2,14 @@
   debug:
     var: plan_group
 
-- name: Set per-plan variables
+- name: Set plan name, VM list, and plan rows
   set_fact:
     plan_name: "{{ plan_group.key }}"
     vm_list: "{{ plan_group.value.vms }}"
     plan_rows: "{{ plan_group.value.rows }}"
+
+- name: Set first row and dependent values
+  set_fact:
     first_row: "{{ plan_rows[0] }}"
     target_namespace: "{{ first_row['Target Namespace'] }}"
     target_storage: "{{ first_row['Target Storage'] }}"
