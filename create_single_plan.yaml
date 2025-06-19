@@ -87,8 +87,7 @@
             namespace: "{{ mtv_namespace }}"
         map:
           - source:
-              type: vmware
-              name: "{{ source_networkmap }}"
+              id: "{{ source_networkmap_id }}"
             destination:
               type: multus
               name: "{{ target_networkmap }}"
