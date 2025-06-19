@@ -153,7 +153,7 @@
               {% for vm in item.1 %}
                 {% set vm_list = vm_list + [{'vmID': vm['VM ID']}] %}
               {% endfor %}
-              {{ vm_list | to_yaml }}
+              {{ vm_list }}
             warm: true
             preserveStaticIPs: true
       loop: "{{ vms_by_plan }}"
