@@ -8,9 +8,12 @@
     vm_list: "{{ plan_group.value.vms }}"
     plan_rows: "{{ plan_group.value.rows }}"
 
-- name: Set first row and dependent values
+- name: Set first row
   set_fact:
     first_row: "{{ plan_rows[0] }}"
+
+- name: Set target and map names
+  set_fact:
     target_namespace: "{{ first_row['Target Namespace'] }}"
     target_storage: "{{ first_row['Target Storage'] }}"
     network_map_name: "netmap-{{ plan_name }}"
