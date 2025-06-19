@@ -12,6 +12,13 @@
       default: ""  # Default to an empty string if nothing is entered
 
   tasks:
+    - name: Check if plan_names is provided
+      assert:
+        that:
+          - plan_names != ''
+        fail_msg: "You must provide at least one plan name."
+        success_msg: "Proceeding with the provided plan names."
+
     - name: Start Migration Plans
       kubernetes.core.k8s:
         state: present
@@ -25,6 +32,6 @@
             plan:
               name: "{{ item }}"  # Plan name from loop
               namespace: openshift-mtv
-      loop: "{{ plan_names.split(',') }}"  # Split the input string into a list of plan names
+      loop: "{{ plan_names.split(',') | map('trim') | list }}"  # Split and trim spaces from the input
       loop_control:
         loop_var: item
