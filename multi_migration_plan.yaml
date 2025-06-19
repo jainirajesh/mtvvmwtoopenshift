@@ -27,33 +27,28 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Group rows by Plan Name
+    - name: Group VMs by Plan Name
       set_fact:
         plans_dict: "{{ plans_dict | default({}) | combine({ item['Plan Name']: (plans_dict[item['Plan Name']] | default([])) + [item] }) }}"
       loop: "{{ all_rows }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Initialize empty plans_with_vms
-      set_fact:
-        plans_with_vms: {}
-
     - name: Construct VM objects and update plans_with_vms
       set_fact:
-        plans_with_vms: "{{ plans_with_vms | combine({ plan_name: {'vms': vms, 'rows': vm_rows} }) }}"
+        plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: { 'vms': vm_list, 'rows': item.value } }) }}"
       vars:
-        plan_name: "{{ item.key }}"
-        vm_rows: "{{ item.value }}"
-        vms: >-
-          {{
-            vm_rows | map('extract', ['RHOS Name', 'VM ID']) |
-            map('zip', ['name', 'id']) | map('items2dict') | list
-          }}
+        vm_list: >-
+          {%- set result = [] -%}
+          {%- for row in item.value -%}
+          {%-   set _ = result.append({ 'name': row['RHOS Name'], 'id': row['VM ID'] }) -%}
+          {%- endfor -%}
+          {{ result }}
       loop: "{{ plans_dict | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
 
-    - name: Loop over each plan and call task to create migration plan
+    - name: Loop over each plan group and create them
       include_tasks: create_single_plan.yaml
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
