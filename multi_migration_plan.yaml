@@ -53,3 +53,6 @@
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: plan_group
+      vars:
+        plan_group: "{{ plan_group }}"
+
