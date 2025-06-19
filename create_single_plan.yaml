@@ -95,7 +95,7 @@
             namespace: "{{ mtv_namespace }}"
         namespace: "{{ mtv_namespace }}"
         targetNamespace: "{{ mtv_namespace }}"
-        vms: "{{ vm_list }}"
+        vms: "{{ plan_group.value.vms }}"
         warm: true
         preserveStaticIPs: true
 
