@@ -122,3 +122,41 @@
         vms: "{{ vm_list }}"
         warm: true
         preserveStaticIPs: true
+    
+    - name: Set Plan UID
+      set_fact:
+        plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
+
+    - name: Patch NetworkMap with ownerReferences
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: NetworkMap
+          metadata:
+            name: "{{ network_map_name }}-{{ plan_name }}"
+            namespace: "{{ mtv_namespace }}"
+            ownerReferences:
+              - apiVersion: forklift.konveyor.io/v1beta1
+                kind: Plan
+                name: "{{ plan_name }}"
+                uid: "{{ plan_uid }}"
+                controller: true
+                blockOwnerDeletion: true
+
+    - name: Patch StorageMap with ownerReferences
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: StorageMap
+          metadata:
+            name: "{{ storage_map_name }}-{{ plan_name }}"
+            namespace: "{{ mtv_namespace }}"
+            ownerReferences:
+              - apiVersion: forklift.konveyor.io/v1beta1
+                kind: Plan
+                name: "{{ plan_name }}"
+                uid: "{{ plan_uid }}"
+                controller: true
+                blockOwnerDeletion: true
