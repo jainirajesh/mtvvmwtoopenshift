@@ -155,7 +155,7 @@
       apiVersion: forklift.konveyor.io/v1beta1
       kind: NetworkMap
       metadata:
-        name: "{{ network_map_name }}-{{ plan_name }}"
+        name: "{{ network_map_name }}"
         namespace: "{{ mtv_namespace }}"
         ownerReferences:
           - apiVersion: forklift.konveyor.io/v1beta1
@@ -172,7 +172,7 @@
       apiVersion: forklift.konveyor.io/v1beta1
       kind: StorageMap
       metadata:
-        name: "{{ storage_map_name }}-{{ plan_name }}"
+        name: "{{ storage_map_name }}"
         namespace: "{{ mtv_namespace }}"
         ownerReferences:
           - apiVersion: forklift.konveyor.io/v1beta1
