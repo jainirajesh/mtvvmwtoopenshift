@@ -3,7 +3,7 @@
   hosts: localhost
   gather_facts: false
   vars_files:
-    - vars.yaml
+    - vars.yaml  # Your external variables, like namespace, etc.
 
   tasks:  
     - name: Start Migration Plans
@@ -13,10 +13,12 @@
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            name: "{{ item }}"   # Use item as plan name
+            name: "{{ item }}"  # Use the item from the loop as the plan name
             namespace: openshift-mtv
           spec:
             plan:
               name: "{{ item }}"  # Plan name from loop
               namespace: openshift-mtv
-      loop: "{{ plan_names.split(',') }}"  # Split the extra var into a list and loop over it
+      loop: "{{ plan_names.split(',') }}"  # Split the 'plan_names' string into a list
+      loop_control:
+        loop_var: item
