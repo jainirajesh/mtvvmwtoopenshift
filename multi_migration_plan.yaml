@@ -8,7 +8,7 @@
   tasks:
     - name: Read CSV content (base64)
       slurp:
-        src: migration_plan.csv
+        src: vm_list_to_migrate.csv
       register: raw_csv
 
     - name: Decode and split CSV into lines
