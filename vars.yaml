@@ -1,7 +1,8 @@
 # vars.yaml
-vcenter_hostname: "10.60.38.189"
-vcenter_username: "vcenter.testing@ngcs-lab.local"
-vcenter_password: "tyv-XFZ1ehb0wcy!tdw"
+
+vcenter_hostname: "{{ lookup('env', 'VCENTER_HOSTNAME') }}"
+vcenter_username: "{{ lookup('env', 'VCENTER_USERNAME') }}"
+vcenter_password: "{{ lookup('env', 'VCENTER_PASSWORD') }}"
 
 mtv_namespace: "openshift-mtv"
 source_provider_name: "vmware"
