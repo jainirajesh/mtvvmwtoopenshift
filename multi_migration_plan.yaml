@@ -34,8 +34,8 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Loop over each plan group and create them
+    - name: Loop over each plan and create them with VMs
       include_tasks: create_single_plan.yaml
-      loop: "{{ plans_dict | dict2items }}"
+      loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: plan_group
