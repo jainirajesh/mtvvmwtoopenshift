@@ -2,7 +2,7 @@
   set_fact:
     plan_name: "{{ plan_group.key }}"
     vm_list: "{{ plan_group.value.vms }}"
-    vm_rows: "{{ plan_group.value.rows }}"
+    full_data: "{{ plan_group.value.rows }}"
 
 - name: Create NetworkMap
   kubernetes.core.k8s:
@@ -95,7 +95,7 @@
             namespace: "{{ mtv_namespace }}"
         namespace: "{{ mtv_namespace }}"
         targetNamespace: "{{ mtv_namespace }}"
-        vms: "{{ plan_group.value.vms }}"
+        vms: "{{ vm_list }}"
         warm: true
         preserveStaticIPs: true
 
