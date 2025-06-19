@@ -1,78 +1,28 @@
 - name: Set plan variables
   set_fact:
-    current_plan_name: "{{ plan_group.key }}"
-    current_vm_list: "{{ plan_group.value | map(attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
-    current_namespace: "{{ plan_group.value[0]['Target Namespace'] }}"
-    current_storage: "{{ plan_group.value[0]['Target Storage'] }}"
-    is_warm: "{{ plan_group.value[0]['Cold or Warm'] == 'warm' }}"
-    keep_ip: "{{ plan_group.value[0]['Keep IP'] == 'yes' }}"
+    plan_name: "{{ plan_group.key }}"
+    plan_data: "{{ plan_group.value }}"
 
-- name: Create Forklift Migration Plan
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: forklift.konveyor.io/v1beta1
-      kind: Plan
-      metadata:
-        name: "{{ current_plan_name }}"
-        namespace: "{{ mtv_namespace }}"
-      spec:
-        provider:
-          source:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: Provider
-            name: "{{ source_provider_name }}"
-            namespace: "{{ mtv_namespace }}"
-          destination:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: Provider
-            name: "{{ destination_provider_name }}"
-            namespace: "{{ mtv_namespace }}"
-        map:
-          network:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: NetworkMap
-            name: "{{ network_map_name }}-{{ current_plan_name }}"
-            namespace: "default"
-          storage:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: StorageMap
-            name: "{{ storage_map_name }}-{{ current_plan_name }}"
-            namespace: "{{ mtv_namespace }}"
-        namespace: "{{ mtv_namespace }}"
-        targetNamespace: "{{ mtv_namespace }}"
-        vms: "{{ current_vm_list }}"
-        warm: "{{ is_warm }}"
-        preserveStaticIPs: "{{ keep_ip }}"
-
-- name: Get Plan UID
-  kubernetes.core.k8s_info:
-    api_version: forklift.konveyor.io/v1beta1
-    kind: Plan
-    name: "{{ current_plan_name }}"
-    namespace: "{{ mtv_namespace }}"
-  register: plan_info
-
-- name: Set Plan UID fact
+- name: Build VM list for plan
   set_fact:
-    plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
+    vm_list: "{{ plan_data | map(attribute='RHOS Name') | map('regex_replace', '^(.+)$', '{\"name\":\"\\1\"}') | map('from_json') | list }}"
 
-- name: Create NetworkMap with owner reference
+- name: Set individual variables from the first entry
+  set_fact:
+    target_namespace: "{{ plan_data[0]['Target Namespace'] }}"
+    target_storage: "{{ plan_data[0]['Target Storage'] }}"
+    warm_type: "{{ plan_data[0]['Cold or Warm'] == 'warm' }}"
+    keep_ip: "{{ plan_data[0]['Keep IP'] == 'yes' }}"
+
+- name: Create NetworkMap
   kubernetes.core.k8s:
     state: present
     definition:
       apiVersion: forklift.konveyor.io/v1beta1
       kind: NetworkMap
       metadata:
-        name: "{{ network_map_name }}-{{ current_plan_name }}"
-        namespace: "default"
-        ownerReferences:
-          - apiVersion: forklift.konveyor.io/v1beta1
-            kind: Plan
-            name: "{{ current_plan_name }}"
-            uid: "{{ plan_uid }}"
-            controller: true
-            blockOwnerDeletion: true
+        name: "{{ network_map_name }}-{{ plan_name }}"
+        namespace: "{{ mtv_namespace }}"
       spec:
         provider:
           source:
@@ -86,29 +36,22 @@
             name: "{{ destination_provider_name }}"
             namespace: "{{ mtv_namespace }}"
         map:
-          - source:
-              id: "{{ source_networkmap_id }}"
-            destination:
-              type: multus
+          - destination:
               name: "{{ target_networkmap }}"
               namespace: "{{ target_network_namespace }}"
+              type: "multus"
+            source:
+              id: "{{ source_networkmap_id }}"
 
-- name: Create StorageMap with owner reference
+- name: Create StorageMap
   kubernetes.core.k8s:
     state: present
     definition:
       apiVersion: forklift.konveyor.io/v1beta1
       kind: StorageMap
       metadata:
-        name: "{{ storage_map_name }}-{{ current_plan_name }}"
+        name: "{{ storage_map_name }}-{{ plan_name }}"
         namespace: "{{ mtv_namespace }}"
-        ownerReferences:
-          - apiVersion: forklift.konveyor.io/v1beta1
-            kind: Plan
-            name: "{{ current_plan_name }}"
-            uid: "{{ plan_uid }}"
-            controller: true
-            blockOwnerDeletion: true
       spec:
         provider:
           source:
@@ -127,3 +70,99 @@
               name: "{{ source_storagemap }}"
             destination:
               storageClass: "{{ target_storagemap }}"
+
+- name: Create Migration Plan
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: forklift.konveyor.io/v1beta1
+      kind: Plan
+      metadata:
+        name: "{{ plan_name }}"
+        namespace: "{{ mtv_namespace }}"
+      spec:
+        provider:
+          source:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Provider
+            name: "{{ source_provider_name }}"
+            namespace: "{{ mtv_namespace }}"
+          destination:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Provider
+            name: "{{ destination_provider_name }}"
+            namespace: "{{ mtv_namespace }}"
+        map:
+          network:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: NetworkMap
+            name: "{{ network_map_name }}-{{ plan_name }}"
+            namespace: "{{ mtv_namespace }}"
+          storage:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: StorageMap
+            name: "{{ storage_map_name }}-{{ plan_name }}"
+            namespace: "{{ mtv_namespace }}"
+        namespace: "{{ mtv_namespace }}"
+        targetNamespace: "{{ mtv_namespace }}"
+        vms: "{{ vm_list }}"
+        warm: "{{ warm_type }}"
+        preserveStaticIPs: "{{ keep_ip }}"
+
+- name: Wait for migration plan to become Ready
+  register: plan_info
+  retries: 10
+  delay: 6
+  until: >
+    plan_info.resources[0].status.conditions is defined and
+    (
+      plan_info.resources[0].status.conditions
+      | selectattr('type', 'equalto', 'Ready')
+      | selectattr('status', 'equalto', 'True')
+      | list | length
+    ) > 0
+  failed_when: plan_info.resources | length == 0
+  delegate_to: localhost
+  kubernetes.core.k8s_info:
+    api_version: forklift.konveyor.io/v1beta1
+    kind: Plan
+    name: "{{ plan_name }}"
+    namespace: "{{ mtv_namespace }}"
+
+- name: Set Plan UID
+  set_fact:
+    plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
+
+- name: Patch NetworkMap with ownerReferences
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: forklift.konveyor.io/v1beta1
+      kind: NetworkMap
+      metadata:
+        name: "{{ network_map_name }}-{{ plan_name }}"
+        namespace: "{{ mtv_namespace }}"
+        ownerReferences:
+          - apiVersion: forklift.konveyor.io/v1beta1
+            kind: Plan
+            name: "{{ plan_name }}"
+            uid: "{{ plan_uid }}"
+            controller: true
+            blockOwnerDeletion: true
+
+- name: Patch StorageMap with ownerReferences
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: forklift.konveyor.io/v1beta1
+      kind: StorageMap
+      metadata:
+        name: "{{ storage_map_name }}-{{ plan_name }}"
+        namespace: "{{ mtv_namespace }}"
+        ownerReferences:
+          - apiVersion: forklift.konveyor.io/v1beta1
+            kind: Plan
+            name: "{{ plan_name }}"
+            uid: "{{ plan_uid }}"
+            controller: true
+            blockOwnerDeletion: true
