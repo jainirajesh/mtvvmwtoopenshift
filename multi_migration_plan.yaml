@@ -29,7 +29,13 @@
 
     - name: Group VMs by Plan Name
       set_fact:
-        plans_dict: "{{ plans_dict | default({}) | combine({ item['Plan Name']: (plans_dict[item['Plan Name']] | default([])) + [item] }) }}"
+        plans_dict: >-
+          {{
+            plans_dict | default({}) |
+            combine({
+              item['Plan Name']: (plans_dict[item['Plan Name']] | default([])) + [item]
+            })
+          }}
       loop: "{{ all_rows }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
@@ -40,7 +46,11 @@
           {{
             plans_with_vms | default({}) | combine({
               item.key: {
-                'vms': item.value | map('extract', ['RHOS Name', 'VM ID']) | map('zip', ['name', 'id']) | map('items2dict') | list,
+                'vms': item.value
+                  | map('extract', ['RHOS Name', 'VM ID'])
+                  | map('zip', ['name', 'id'])
+                  | map('items2dict')
+                  | list,
                 'rows': item.value
               }
             })
@@ -49,3 +59,8 @@
       loop_control:
         label: "{{ item.key }}"
 
+    - name: Loop over each plan group and create plans
+      include_tasks: create_single_plan.yaml
+      loop: "{{ plans_with_vms | dict2items }}"
+      loop_control:
+        loop_var: plan_group
