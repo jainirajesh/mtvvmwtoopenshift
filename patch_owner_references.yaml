@@ -19,13 +19,15 @@
     ) > 0
   failed_when: plan_info.resources | length == 0
 
+# Step 11: Add ownerReferences to the Maps using apply
 - name: Set Plan UID
   set_fact:
     plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
 
 - name: Patch NetworkMap with ownerReferences
   kubernetes.core.k8s:
-    state: present
+    apply: true
+    force: true
     definition:
       apiVersion: forklift.konveyor.io/v1beta1
       kind: NetworkMap
@@ -42,7 +44,8 @@
 
 - name: Patch StorageMap with ownerReferences
   kubernetes.core.k8s:
-    state: present
+    apply: true
+    force: true
     definition:
       apiVersion: forklift.konveyor.io/v1beta1
       kind: StorageMap
