@@ -122,3 +122,6 @@
         vms: "{{ vm_list }}"
         warm: true
         preserveStaticIPs: true
+# STEP 4: Patch ownerReferences on NetworkMap and StorageMap
+- name: Patch OwnerReferences
+  include_tasks: patch_owner_references.yaml
