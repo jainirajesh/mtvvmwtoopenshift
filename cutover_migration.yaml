@@ -3,8 +3,11 @@
   hosts: localhost
   gather_facts: false
 
+  vars_files:
+    - vars.yaml  # Optional external vars
+
   vars:
-    cutover_namespace: "{{ cutover_namespace }}"
+    cutover_namespace: "{{ mtv_namespace }}"
     plan_names_list: "{{ plan_names.split(',') | map('trim') | list }}"
 
   tasks:
