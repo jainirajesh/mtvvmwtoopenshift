@@ -1,32 +1,55 @@
 ---
-- name: Cutover a specific migration plan provided via survey
+- name: Cutover multiple migration plans from survey input
   hosts: localhost
   gather_facts: false
 
   vars:
-    cutover_plan_name: "{{ cutover_plan_name }}"
     cutover_namespace: "{{ cutover_namespace }}"
+    plan_names_list: "{{ plan_names.split(',') | map('trim') | list }}"
 
   tasks:
-    - name: Validate that the plan exists
+    - name: Validate that each plan exists
       kubernetes.core.k8s_info:
         api_version: forklift.konveyor.io/v1beta1
         kind: Plan
-        name: "{{ cutover_plan_name }}"
+        name: "{{ item }}"
         namespace: "{{ cutover_namespace }}"
       register: plan_info
       failed_when: plan_info.resources | length == 0
+      loop: "{{ plan_names_list }}"
+      loop_control:
+        loop_var: item
 
-    - name: Start Cutover migration
+    - name: Wait for Sync to Complete for each plan
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Migration
+        namespace: "{{ cutover_namespace }}"
+        label_selectors:
+          - "forklift.konveyor.io/plan={{ item }}"
+      register: migration_status
+      until: >
+        migration_status.resources | selectattr('status.phase', 'equalto', 'Finished - Copy Phase') | list | length > 0
+      retries: 60
+      delay: 30
+      loop: "{{ plan_names_list }}"
+      loop_control:
+        loop_var: item
+
+    - name: Start Cutover migration for each plan
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            name: "cutover-{{ cutover_plan_name }}"
+            generateName: "cutover-{{ item }}-"
             namespace: "{{ cutover_namespace }}"
           spec:
+            cutover: true
             plan:
-              name: "{{ cutover_plan_name }}"
+              name: "{{ item }}"
               namespace: "{{ cutover_namespace }}"
+      loop: "{{ plan_names_list }}"
+      loop_control:
+        loop_var: item
