@@ -33,7 +33,7 @@
             generateName: "cutover-{{ item }}-"
             namespace: "{{ cutover_namespace }}"
           spec:
-            cutover: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+            cutover: "{{ lookup('pipe', 'date +%Y-%m-%dT%H:%M:%S%z') }}"
             plan:
               name: "{{ item }}"
               namespace: "{{ cutover_namespace }}"
