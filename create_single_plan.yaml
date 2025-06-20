@@ -29,6 +29,16 @@
       metadata:
         name: "{{ target_namespace }}"
 
+# Debug resolved values
+- name: Debug resolved values
+  debug:
+    msg:
+      - "Namespace: {{ target_namespace }}"
+      - "StorageClass: {{ target_storage }}"
+      - "Source StorageMap: {{ source_storagemap }}"
+      - "Source NetworkMap ID: {{ source_networkmap_id }}"
+      - "Target Network: {{ target_networkmap }} in {{ target_network_namespace }}"
+
 ##################################################################
 ## STEP 1: Create NetworkMap
 ##################################################################
@@ -132,6 +142,30 @@
         vms: "{{ vm_list }}"
         warm: true
         preserveStaticIPs: true
-# STEP 4: Patch ownerReferences on NetworkMap and StorageMap
+
+##################################################################
+## STEP 4: Wait until Plan is Ready, then patch ownerReferences
+##################################################################
+- name: Wait for plan to become Ready
+  register: plan_info
+  retries: 10
+  delay: 6
+  until: >
+    plan_info.resources[0].status.conditions is defined and
+    (
+      plan_info.resources[0].status.conditions
+      | selectattr('type', 'equalto', 'Ready')
+      | selectattr('status', 'equalto', 'True')
+      | list | length
+    ) > 0
+  failed_when: plan_info.resources | length == 0
+  delegate_to: localhost
+  kubernetes.core.k8s_info:
+    api_version: forklift.konveyor.io/v1beta1
+    kind: Plan
+    name: "{{ plan_name }}"
+    namespace: "{{ target_namespace }}"
+
+# Patch ownerReferences once Plan is Ready
 - name: Patch OwnerReferences
   include_tasks: patch_owner_references.yaml
