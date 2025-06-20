@@ -19,10 +19,19 @@
     ) > 0
   failed_when: plan_info.resources | length == 0
 
+- name: Debug Plan Info to confirm UID
+  debug:
+    var: plan_info.resources[0].metadata.uid
+
 # Step 11: Add ownerReferences to the Maps using apply
 - name: Set Plan UID
   set_fact:
     plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
+
+- name: Fail if Plan UID is not set
+  fail:
+    msg: "Plan UID could not be retrieved!"
+  when: plan_uid == ''
 
 - name: Patch NetworkMap with ownerReferences
   kubernetes.core.k8s:
