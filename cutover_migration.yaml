@@ -1,0 +1,32 @@
+---
+- name: Cutover a specific migration plan provided via survey
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    cutover_plan_name: "{{ cutover_plan_name }}"
+    cutover_namespace: "{{ cutover_namespace }}"
+
+  tasks:
+    - name: Validate that the plan exists
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Plan
+        name: "{{ cutover_plan_name }}"
+        namespace: "{{ cutover_namespace }}"
+      register: plan_info
+      failed_when: plan_info.resources | length == 0
+
+    - name: Start Cutover migration
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: Migration
+          metadata:
+            name: "cutover-{{ cutover_plan_name }}"
+            namespace: "{{ cutover_namespace }}"
+          spec:
+            plan:
+              name: "{{ cutover_plan_name }}"
+              namespace: "{{ cutover_namespace }}"
