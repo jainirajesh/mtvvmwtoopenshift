@@ -33,12 +33,9 @@
             generateName: "cutover-{{ item }}-"
             namespace: "{{ cutover_namespace }}"
           spec:
-            #cutover: "{{ lookup('pipe', 'date +%Y-%m-%dT%H:%M:%S%:z') }}"
-            cutover: "2025-06-20T15:26:00+05:30"
             plan:
               name: "{{ item }}"
               namespace: "{{ cutover_namespace }}"
       loop: "{{ plan_names_list }}"
       loop_control:
         loop_var: item
-
