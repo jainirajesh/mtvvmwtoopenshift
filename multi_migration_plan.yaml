@@ -55,5 +55,3 @@
         loop_var: plan_group
       vars:
         plan_group: "{{ plan_group }}"
-    - name: Patch NetworkMap and StorageMap with ownerReferences
-      include_tasks: patch_owner_references.yaml
