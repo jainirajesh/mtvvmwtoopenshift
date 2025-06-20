@@ -110,12 +110,12 @@
             apiVersion: forklift.konveyor.io/v1beta1
             kind: Provider
             name: "{{ source_provider_name }}"
-            namespace: "{{ target_namespace }}"
+            namespace: openshift-mtv
           destination:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: Provider
             name: "{{ destination_provider_name }}"
-            namespace: "{{ target_namespace }}"
+            namespace: openshift-mtv
         map:
           network:
             apiVersion: forklift.konveyor.io/v1beta1
