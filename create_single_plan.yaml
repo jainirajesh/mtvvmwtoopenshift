@@ -19,6 +19,14 @@
     network_map_name: "netmap-{{ plan_name }}"
     storage_map_name: "storagemap-{{ plan_name }}"
 
+- name: Ensure namespace exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ target_namespace }}"
 ##################################################################
 ## STEP 1: Create NetworkMap
 ##################################################################
