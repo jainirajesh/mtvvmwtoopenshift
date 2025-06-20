@@ -23,22 +23,6 @@
       loop_control:
         loop_var: item
 
-    - name: Wait for Sync to Complete for each plan
-      kubernetes.core.k8s_info:
-        api_version: forklift.konveyor.io/v1beta1
-        kind: Migration
-        namespace: "{{ cutover_namespace }}"
-        label_selectors:
-          - "forklift.konveyor.io/plan={{ item }}"
-      register: migration_status
-      until: >
-        migration_status.resources | selectattr('status.phase', 'equalto', 'Finished - Copy Phase') | list | length > 0
-      retries: 60
-      delay: 30
-      loop: "{{ plan_names_list }}"
-      loop_control:
-        loop_var: item
-
     - name: Start Cutover migration for each plan
       kubernetes.core.k8s:
         state: present
