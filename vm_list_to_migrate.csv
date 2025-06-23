@@ -1,3 +1,3 @@
 Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS,Plan Name,Target Namespace,Target Storage,Cold or Warm,Keep IP 
-3,linux-1,vm-31039,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),plan-012,ns-a,lvms-vg1,warm,yes 
-4,win-1,vm-31040,1,group-1,1,prod,Microsoft Windows Server 2019 (64-bit),plan-123,ns-b,lvms-vg1,warm,yes
+3,linux-1,vm-31039,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),plan-01,ns-a,lvms-vg1,warm,yes 
+4,win-1,vm-31040,1,group-1,1,prod,Microsoft Windows Server 2019 (64-bit),plan-02,ns-b,lvms-vg1,warm,yes
