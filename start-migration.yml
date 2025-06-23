@@ -43,14 +43,14 @@
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
-         kind: Migration
-         metadata:
-           generateName: "{{ item['Plan Name'] }}-migration-"
-           namespace: "{{ item['Target Namespace'] }}"
-         spec:
-           plan:
-             name: "{{ item['Plan Name'] }}"
-             namespace: "{{ item['Target Namespace'] }}"
+          kind: Migration
+          metadata:
+            generateName: "{{ item['Plan Name'] }}-migration-"
+            namespace: "{{ item['Target Namespace'] }}"
+          spec:
+            plan:
+              name: "{{ item['Plan Name'] }}"
+              namespace: "{{ item['Target Namespace'] }}"
       loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
