@@ -1,24 +1,52 @@
----
-- name: Start Multiple Migration Plans from Survey
+- name: Start Multiple Migration Plans from Survey and CSV
   hosts: localhost
   gather_facts: false
+
   vars_files:
-    - vars.yaml  # Optional external vars
+    - vars.yaml  # Optional
 
   tasks:
-    - name: Start Migration Plan "{{ item }}"
+    - name: Read Migration Plan Namespace Mapping from CSV
+      community.general.read_csv:
+        path: r_vm_list_to_migrate.csv.csv
+      register: migration_data
+
+    - name: Set filtered plans
+      set_fact:
+        filtered_plans: >-
+          {{
+            plan_names.split(',') | map('trim') | list
+            | map('extract', dict(
+                _items=migration_data.list | items2dict(key_name='name', value_name='namespace'),
+                default='')
+            )
+            | zip(plan_names.split(',') | map('trim') | list)
+            | map('reverse')   # get [{name, namespace}]
+            | map('combine', [{'name': item[0], 'namespace': item[1]} for item in _])
+          }}
+      vars:
+        _items: "{{ migration_data.list | items2dict(key_name='name', value_name='namespace') }}"
+      delegate_to: localhost
+
+    - name: Fail if any plan is missing a namespace
+      fail:
+        msg: "Missing namespace for plan: {{ item.name }}"
+      when: item.namespace == ''
+      loop: "{{ filtered_plans }}"
+
+    - name: Start Migration Plan "{{ item.name }}"
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            generateName: "{{ item }}-migration-"
-            namespace: openshift-mtv
+            generateName: "{{ item.name }}-migration-"
+            namespace: "{{ item.namespace }}"
           spec:
             plan:
-              name: "{{ item }}"
-              namespace: openshift-mtv
-      loop: "{{ plan_names.split(',') | map('trim') | list }}"
+              name: "{{ item.name }}"
+              namespace: "{{ item.namespace }}"
+      loop: "{{ filtered_plans }}"
       loop_control:
         loop_var: item
