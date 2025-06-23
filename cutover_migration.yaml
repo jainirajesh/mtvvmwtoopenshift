@@ -1,10 +1,9 @@
----
 - name: Cutover multiple migration plans from survey input
   hosts: localhost
   gather_facts: true
 
   vars_files:
-    - vars.yaml  # Optional external vars
+    - vars.yaml
 
   vars:
     cutover_namespace: "{{ mtv_namespace }}"
@@ -38,5 +37,20 @@
               name: "{{ item }}"
               namespace: "{{ cutover_namespace }}"
       loop: "{{ plan_names_list }}"
+      loop_control:
+        loop_var: item
+      register: migration_results
+
+    - name: Patch each created Migration to resume cutover
+      kubernetes.core.k8s:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Migration
+        name: "{{ item.resources[0].metadata.name }}"
+        namespace: "{{ cutover_namespace }}"
+        merge_type: strategic-merge
+        patch:
+          spec:
+            resume: true
+      loop: "{{ migration_results.results }}"
       loop_control:
         loop_var: item
