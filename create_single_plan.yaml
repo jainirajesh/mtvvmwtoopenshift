@@ -139,7 +139,7 @@
     api_version: forklift.konveyor.io/v1beta1
     name: "storagemap-{{ plan_group.key | lower }}"
     namespace: "{{ mtv_namespace }}"
-    merge_type: strategic
+    merge_type: strategic-merge
     definition:
       metadata:
         ownerReferences:
