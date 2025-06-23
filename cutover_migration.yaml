@@ -3,8 +3,11 @@
   hosts: localhost
   gather_facts: false
 
+  vars_files:
+    - vars.yaml  # Optional external vars
+    
   vars:
-    cutover_namespace: "mtv_namespace"
+    cutover_namespace: "{{ mtv_namespace }}"
     plan_names_list: "{{ plan_names.split(',') | map('trim') | list }}"
     vm_name: rhel-9
     disktransfer_total_mb: 30720
@@ -19,8 +22,19 @@
       loop: "{{ plan_names_list }}"
       loop_control:
         loop_var: item
-      register: plan_info
-      failed_when: plan_info.results | selectattr('resources', 'length', 'equalto', 0) | list | length > 0
+      register: plan_info_all
+      failed_when: false   # check failure after loop
+
+    - name: Fail if any Plan is missing
+      fail:
+        msg: "One or more plans not found: {{ missing_plans }}"
+      vars:
+        missing_plans: >-
+          {{ plan_info_all.results
+             | selectattr('resources', 'length', 'equalto', 0)
+             | map(attribute='item')
+             | list }}
+      when: missing_plans | length > 0
 
     - name: Get Migrations for each Plan
       kubernetes.core.k8s_info:
