@@ -4,26 +4,39 @@
   gather_facts: false
 
   vars_files:
-    - vars.yaml  # Optional external vars
+    - vars.yaml
 
   vars:
     cutover_namespace: "{{ mtv_namespace }}"
     plan_names_list: "{{ plan_names.split(',') | map('trim') | list }}"
 
   tasks:
-    - name: Validate that each plan exists
+    - name: Retrieve Plan resources
       kubernetes.core.k8s_info:
         api_version: forklift.konveyor.io/v1beta1
         kind: Plan
         name: "{{ item }}"
         namespace: "{{ cutover_namespace }}"
       register: plan_info
-      failed_when: plan_info.resources | length == 0
       loop: "{{ plan_names_list }}"
       loop_control:
         loop_var: item
 
-    - name: Start Cutover migration for each plan
+    - name: Filter plans with completed Sync
+      set_fact:
+        synced_plans: >-
+          {{ synced_plans | default([]) +
+             ([item.item] if item.resources[0].status.conditions | selectattr('type', 'equalto', 'Succeeded') | selectattr('reason', 'equalto', 'Succeeded') | list | length > 0 else []) }}
+      loop: "{{ plan_info.results }}"
+      loop_control:
+        loop_var: item
+
+    - name: Fail if no plans have completed sync
+      fail:
+        msg: "No plans are ready for cutover (sync not completed)."
+      when: synced_plans | length == 0
+
+    - name: Start Cutover migration for synced plans only
       kubernetes.core.k8s:
         state: present
         definition:
@@ -37,6 +50,6 @@
             plan:
               name: "{{ item }}"
               namespace: "{{ cutover_namespace }}"
-      loop: "{{ plan_names_list }}"
+      loop: "{{ synced_plans }}"
       loop_control:
         loop_var: item
