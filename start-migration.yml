@@ -1,62 +1,24 @@
-- name: Start Migration Plans from CSV filtered by input
+---
+- name: Start Multiple Migration Plans from Survey
   hosts: localhost
   gather_facts: false
-
   vars_files:
-    - vars.yaml  # Should contain `plan_names: win230601,linux230601`
+    - vars.yaml  # Optional external vars
 
   tasks:
-    - name: Read full CSV with migration plan data
-      community.general.read_csv:
-        path: r_vm_list_to_migrate.csv
-      register: migration_data
-
-    - name: Extract plan lookup (name + namespace)
-      set_fact:
-        plan_lookup: >-
-          {{
-            migration_data.list
-            | map(attribute='Plan Name')
-            | zip(migration_data.list | map(attribute='Target Namespace'))
-            | map('list')
-            | map('dict', ['name', 'namespace'])
-            | list
-          }}
-
-    - name: Filter plans by input list
-      set_fact:
-        filtered_plans: >-
-          {{
-            plan_names.split(',') | map('trim') | list
-            | map('extract', plan_lookup | items2dict(key_name='name', value_name='namespace'), default='')
-            | zip(plan_names.split(',') | map('trim') | list)
-            | selectattr('0', 'ne', '')  # Only keep entries with namespace
-            | map('reverse')
-            | map('combine', [{'name': item[0], 'namespace': item[1]}])
-            | list
-          }}
-
-    - name: Fail if any plan is missing namespace
-      fail:
-        msg: "Missing namespace for plan: {{ item.name }}"
-      when: item.namespace == ''
-      loop: "{{ filtered_plans }}"
-      loop_control:
-        loop_var: item
-
-    - name: Start Migration Plan "{{ item.name }}"
+    - name: Start Migration Plan "{{ item }}"
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            generateName: "{{ item.name }}-migration-"
-            namespace: "{{ item.namespace }}"
+            generateName: "{{ item }}-migration-"
+            namespace: openshift-mtv
           spec:
             plan:
-              name: "{{ item.name }}"
-              namespace: "{{ item.namespace }}"
-      loop: "{{ filtered_plans }}"
+              name: "{{ item }}"
+              namespace: openshift-mtv
+      loop: "{{ plan_names.split(',') | map('trim') | list }}"
       loop_control:
         loop_var: item
