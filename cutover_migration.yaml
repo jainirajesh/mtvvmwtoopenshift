@@ -40,18 +40,3 @@
       loop_control:
         loop_var: item
       register: migration_results
-
-    - name: Resume cutover on each created Migration
-      kubernetes.core.k8s:
-        api_version: forklift.konveyor.io/v1beta1
-        kind: Migration
-        name: "{{ item.result.metadata.name }}"
-        namespace: "{{ cutover_namespace }}"
-        state: present
-        merge_type: strategic-merge
-        definition:
-          spec:
-            resume: true
-      loop: "{{ migration_results.results }}"
-      loop_control:
-        loop_var: item
