@@ -1,42 +1,68 @@
-- name: Cutover multiple migration plans from survey input
+---
+- name: Perform Cutover for a Migration Plan if Sync Completed
   hosts: localhost
-  gather_facts: true
-
-  vars_files:
-    - vars.yaml
-
+  gather_facts: false
   vars:
-    cutover_namespace: "{{ mtv_namespace }}"
-    plan_names_list: "{{ plan_names.split(',') | map('trim') | list }}"
+    #plan_name: "plan-abc"                # Pass this via survey or extra vars
+    plan_namespace: "openshift-mtv"      # Namespace where the plan actually exists
 
   tasks:
-    - name: Validate that each plan exists
+
+    - name: Get latest migration for the plan
       kubernetes.core.k8s_info:
         api_version: forklift.konveyor.io/v1beta1
-        kind: Plan
-        name: "{{ item }}"
-        namespace: "{{ cutover_namespace }}"
-      register: plan_info
-      failed_when: plan_info.resources | length == 0
-      loop: "{{ plan_names_list }}"
-      loop_control:
-        loop_var: item
+        kind: Migration
+        namespace: "{{ plan_namespace }}"
+      register: migration_info
 
-    - name: Start Cutover migration for each plan
+    - name: Filter migrations for the selected plan
+      set_fact:
+        matching_migrations: >-
+          {{
+            migration_info.resources
+            | selectattr('spec.plan.name', 'equalto', plan_name)
+            | sort(attribute='metadata.creationTimestamp', reverse=true)
+            | list
+          }}
+
+    - name: Set latest migration
+      set_fact:
+        last_migration: "{{ matching_migrations[0] }}"
+      when: matching_migrations | length > 0
+
+    - name: Check if all VMs are in CopyingPaused state
+      set_fact:
+        ready_for_cutover: >-
+          {{
+            last_migration.status.vms
+            | map(attribute='phase')
+            | list
+            | unique
+            == ['CopyingPaused']
+          }}
+      when: last_migration is defined
+
+    - name: Show cutover readiness status
+      debug:
+        msg: "Migration '{{ plan_name }}' is ready for cutover: {{ ready_for_cutover | default(false) }}"
+
+    - name: Perform Cutover if ready
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            generateName: "cutover-{{ item }}-"
-            namespace: "{{ cutover_namespace }}"
+            generateName: "{{ plan_name }}-cutover-"
+            namespace: "{{ plan_namespace }}"
           spec:
-            cutover: "{{ ansible_date_time.iso8601 }}"
             plan:
-              name: "{{ item }}"
-              namespace: "{{ cutover_namespace }}"
-      loop: "{{ plan_names_list }}"
-      loop_control:
-        loop_var: item
-      register: migration_results
+              name: "{{ plan_name }}"
+              namespace: "{{ plan_namespace }}"
+            cutover: true
+      when: ready_for_cutover | default(false)
+
+    - name: Skip cutover if not ready
+      debug:
+        msg: "Cutover skipped — not all VMs are in 'CopyingPaused' phase."
+      when: not (ready_for_cutover | default(false))
