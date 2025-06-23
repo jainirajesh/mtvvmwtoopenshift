@@ -11,9 +11,17 @@
         path: r_vm_list_to_migrate.csv
       register: migration_data
 
-    - name: Extract plan lookup
+    - name: Extract plan lookup (name + namespace)
       set_fact:
-        plan_lookup: "{{ migration_data.list | map(attribute='Plan Name') | zip(migration_data.list | map(attribute='Target Namespace')) | map('list') | map('combine', [{'name': item[0], 'namespace': item[1]}]) | list }}"
+        plan_lookup: >-
+          {{
+            migration_data.list
+            | map(attribute='Plan Name')
+            | zip(migration_data.list | map(attribute='Target Namespace'))
+            | map('list')
+            | map('dict', ['name', 'namespace'])
+            | list
+          }}
 
     - name: Filter plans by input list
       set_fact:
