@@ -98,7 +98,3 @@
         migrateSharedDisks: true
         warm: true
         vms: "{{ plan_group.value.vms }}"
-
-# Patch ownerReferences once Plan is Ready
-- name: Patch OwnerReferences
-  include_tasks: patch_owner_references.yaml
