@@ -1,43 +1,42 @@
 ---
-- name: Start cutover based on Migration Plan name in OpenShift
+- name: Cutover multiple migration plans from survey input
   hosts: localhost
-  gather_facts: no
+  gather_facts: false
+
+  vars_files:
+    - vars.yaml  # Optional external vars
 
   vars:
-    openshift_namespace: openshift-mtv
-    migration_plan_name: test-cutover13         # Set this to the name of your MigrationPlan
-    migration_cr_name: cutover-{{ migration_plan_name }}-{{ ansible_date_time.epoch }}
+    cutover_namespace: "{{ mtv_namespace }}"
+    plan_names_list: "{{ plan_names.split(',') | map('trim') | list }}"
 
   tasks:
-    - name: Trigger cutover Migration CR
-      community.kubernetes.k8s:
+    - name: Validate that each plan exists
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Plan
+        name: "{{ item }}"
+        namespace: "{{ cutover_namespace }}"
+      register: plan_info
+      failed_when: plan_info.resources | length == 0
+      loop: "{{ plan_names_list }}"
+      loop_control:
+        loop_var: item
+
+    - name: Start Cutover migration for each plan
+      kubernetes.core.k8s:
         state: present
-        namespace: "{{ openshift_namespace }}"
         definition:
-          apiVersion: migration.openshift.io/v1alpha1
+          apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            name: "{{ migration_cr_name }}"
+            generateName: "cutover-{{ item }}-"
+            namespace: "{{ cutover_namespace }}"
           spec:
-            plan: "{{ migration_plan_name }}"
-            stage: false
-            quiescePods: true
-            keepAnnotations: true
-            cutover: true
-
-    - name: Wait for Migration to complete (cutover)
-      community.kubernetes.k8s_info:
-        api_version: migration.openshift.io/v1alpha1
-        kind: Migration
-        namespace: "{{ openshift_namespace }}"
-        name: "{{ migration_cr_name }}"
-      register: migration_status
-      retries: 20
-      delay: 30
-      until: >
-        migration_status.resources[0].status.conditions | selectattr('type', 'equalto', 'Succeeded') | selectattr('status', 'equalto', 'True') | list | length > 0
-
-    - name: Show successful cutover message
-      debug:
-        msg: "Cutover for migration plan '{{ migration_plan_name }}' completed successfully."
-
+            cutover: "{{ lookup('pipe', 'TZ=America/Los_Angeles date +%Y-%m-%dT%H:%M:%S%:z') }}"
+            plan:
+              name: "{{ item }}"
+              namespace: "{{ cutover_namespace }}"
+      loop: "{{ plan_names_list }}"
+      loop_control:
+        loop_var: item
