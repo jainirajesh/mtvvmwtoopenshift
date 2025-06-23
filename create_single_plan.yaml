@@ -69,7 +69,8 @@
               namespace: "{{ target_network_namespace }}"
               type: multus
             source:
-              id: "{{ source_networkmap_id }}"
+              #id: "{{ source_networkmap_id }}"
+              name: "{{ source_networkmap }}"
 
 ##################################################################
 ## STEP 2: Create StorageMap
