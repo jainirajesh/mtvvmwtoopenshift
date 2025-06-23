@@ -119,7 +119,7 @@
     api_version: forklift.konveyor.io/v1beta1
     kind: Plan
     name: "{{ plan_name }}"
-    namespace: "{{ target_namespace }}"
+    namespace: "{{ mtv_namespace }}"
 
 # Patch ownerReferences once Plan is Ready
 - name: Patch OwnerReferences
