@@ -41,18 +41,10 @@
         loop_var: item
       register: migration_results
 
-    - name: Patch each created Migration to resume cutover
-      kubernetes.core.k8s:
-        api_version: forklift.konveyor.io/v1beta1
-        kind: Migration
-        name: "cutover-test-cutover17-tnqsc"
-        namespace: "{{ cutover_namespace }}"
-        state: present
-        merge_type: strategic-merge
-        definition:
-          spec:
-            resume: true
+    - name: Resume each created Migration using kubectl patch
+      command: >
+        kubectl patch migration {{ item.result.metadata.name }} -n {{ cutover_namespace }}
+        --type=merge -p '{"spec":{"resume":true}}'
       loop: "{{ migration_results.results }}"
       loop_control:
         loop_var: item
-
