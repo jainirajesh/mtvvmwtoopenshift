@@ -34,7 +34,7 @@
       set_fact:
         ready_for_cutover: >-
           {{
-            last_migration.status.vms
+            (last_migration.status.vms | default([]))
             | map(attribute='phase')
             | list
             | unique
