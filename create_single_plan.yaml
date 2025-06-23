@@ -92,7 +92,7 @@
             kind: Provider
             name: "{{ source_provider_name }}"
             namespace: openshift-mtv
-            uid: "{{ source_provider_uid }}
+            uid: "{{ source_provider_uid }}"
           destination:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: Provider
