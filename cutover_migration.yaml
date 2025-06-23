@@ -40,11 +40,3 @@
       loop_control:
         loop_var: item
       register: migration_results
-
-    - name: Resume each created Migration using kubectl patch
-      command: >
-        kubectl patch migration {{ item.result.metadata.name }} -n {{ cutover_namespace }}
-        --type=merge -p '{"spec":{"resume":true}}'
-      loop: "{{ migration_results.results }}"
-      loop_control:
-        loop_var: item
