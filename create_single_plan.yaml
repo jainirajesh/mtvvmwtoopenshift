@@ -50,20 +50,20 @@
       kind: NetworkMap
       metadata:
         name: "{{ network_map_name }}"
-        namespace: "{{ target_namespace }}"
+        namespace: "{{ mtv_namespace }}"
       spec:
         provider:
           source:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: Provider
             name: "{{ source_provider_name }}"
-            namespace: openshift-mtv
+            namespace: "{{ mtv_namespace }}"
             uid: "{{ source_provider_uid }}"
           destination:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: Provider
             name: "{{ destination_provider_name }}"
-            namespace: openshift-mtv
+            namespace: "{{ mtv_namespace }}"
             uid: "{{ destination_provider_uid }}"
         map:
           - destination:
@@ -84,20 +84,20 @@
       kind: StorageMap
       metadata:
         name: "{{ storage_map_name }}"
-        namespace: "{{ target_namespace }}"
+        namespace: "{{ mtv_namespace }}"
       spec:
         provider:
           source:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: Provider
             name: "{{ source_provider_name }}"
-            namespace: openshift-mtv
+            namespace: "{{ mtv_namespace }}"
             uid: "{{ source_provider_uid }}"
           destination:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: Provider
             name: "{{ destination_provider_name }}"
-            namespace: openshift-mtv
+            namespace: "{{ mtv_namespace }}"
             uid: "{{ destination_provider_uid }}"
         map:
           - source:
@@ -116,31 +116,31 @@
       kind: Plan
       metadata:
         name: "{{ plan_name }}"
-        namespace: "{{ target_namespace }}"
+        namespace: "{{ mtv_namespace }}"
       spec:
         provider:
           source:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: Provider
             name: "{{ source_provider_name }}"
-            namespace: openshift-mtv
+            namespace: "{{ mtv_namespace }}"
           destination:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: Provider
             name: "{{ destination_provider_name }}"
-            namespace: openshift-mtv
+            namespace: "{{ mtv_namespace }}"
         map:
           network:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: NetworkMap
             name: "{{ network_map_name }}"
-            namespace: "{{ target_namespace }}"
+            namespace: "{{ mtv_namespace }}"
           storage:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: StorageMap
             name: "{{ storage_map_name }}"
-            namespace: "{{ target_namespace }}"
-        namespace: "{{ target_namespace }}"
+            namespace: "{{ mtv_namespace }}"
+        namespace: "{{ mtv_namespace }}"
         targetNamespace: "{{ target_namespace }}"
         vms: "{{ vm_list }}"
         warm: true
