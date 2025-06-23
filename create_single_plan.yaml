@@ -98,3 +98,29 @@
         migrateSharedDisks: true
         warm: true
         vms: "{{ plan_group.value.vms }}"
+##################################################################
+## STEP 4: Wait until Plan is Ready, then patch ownerReferences
+##################################################################
+- name: Wait for plan to become Ready
+  register: plan_info
+  retries: 10
+  delay: 6
+  until: >
+    plan_info.resources[0].status.conditions is defined and
+    (
+      plan_info.resources[0].status.conditions
+      | selectattr('type', 'equalto', 'Ready')
+      | selectattr('status', 'equalto', 'True')
+      | list | length
+    ) > 0
+  failed_when: plan_info.resources | length == 0
+  delegate_to: localhost
+  kubernetes.core.k8s_info:
+    api_version: forklift.konveyor.io/v1beta1
+    kind: Plan
+    name: "{{ plan_name }}"
+    namespace: "{{ target_namespace }}"
+
+# Patch ownerReferences once Plan is Ready
+- name: Patch OwnerReferences
+  include_tasks: patch_owner_references.yaml
