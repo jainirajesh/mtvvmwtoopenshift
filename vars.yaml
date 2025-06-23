@@ -20,5 +20,9 @@ source_networkmap_id: dvportgroup-1008
 target_network_namespace: "default"
 target_networkmap: "nad"
 
-source_storagemap: "vSAN-Datastore"
-target_storagemap: "lvms-vg1"
+source_storagemap: "vSAN-Datastore"          # (for display or info)
+source_storagemap_id: datastore-22          # ✅ critical: used in YAML
+target_storage: lvms-vg1
+
+#source_storagemap: "vSAN-Datastore"
+#target_storagemap: "lvms-vg1"
