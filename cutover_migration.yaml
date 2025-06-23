@@ -45,12 +45,14 @@
       kubernetes.core.k8s:
         api_version: forklift.konveyor.io/v1beta1
         kind: Migration
-        name: "cutover-test-cutover17-tnqsc"
+        name: "{{ item.resources[0].metadata.name }}"
         namespace: "{{ cutover_namespace }}"
+        state: present
         merge_type: strategic-merge
-        patch:
+        definition:
           spec:
             resume: true
       loop: "{{ migration_results.results }}"
       loop_control:
         loop_var: item
+
