@@ -28,14 +28,14 @@
     - name: Extract unique plan name and target namespace pairs
       set_fact:
         unique_plans: >-
-          {{
-            all_rows
-            | groupby('Plan Name')
-            | map('last')            # Get the list of rows per plan
-            | map('first')           # Take the first row for each plan group
-            | map('extract', ['Plan Name', 'Target Namespace'])
-            | list
-          }}
+        {{
+          all_rows
+          | groupby('Plan Name')
+          | map('last')
+          | map('first')
+          | map('extract', ['Plan Name', 'Target Namespace'])
+          | list
+        }}
 
 
     - name: Start Migration Plan for each unique Plan Name and Namespace
@@ -47,10 +47,10 @@
           metadata:
             generateName: "{{ item['Plan Name'] }}-migration-"
             namespace: "{{ item['Target Namespace'] }}"
-          spec:
-            plan:
-              name: "{{ item['Plan Name'] }}"
-              namespace: "{{ item['Target Namespace'] }}"
+        spec:
+          plan:
+            name: "{{ item['Plan Name'] }}"
+            namespace: "{{ item['Target Namespace'] }}"
       loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
