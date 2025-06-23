@@ -1,47 +1,3 @@
-- name: DEBUG plan_group
-  debug:
-    var: plan_group
-
-- name: Set plan name, VM list, and plan rows
-  set_fact:
-    plan_name: "{{ plan_group.key }}"
-    vm_list: "{{ plan_group.value.vms }}"
-    plan_rows: "{{ plan_group.value.rows }}"
-
-- name: Set first row
-  set_fact:
-    first_row: "{{ plan_rows[0] }}"
-
-- name: Set target and map names
-  set_fact:
-    target_namespace: "{{ first_row['Target Namespace'] }}"
-    target_storage: "{{ first_row['Target Storage'] }}"
-    network_map_name: "netmap-{{ plan_name }}"
-    storage_map_name: "storagemap-{{ plan_name }}"
-
-# Ensure the target namespace exists before proceeding
-- name: Ensure target namespace exists
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ target_namespace }}"
-
-# Debug resolved values
-- name: Debug resolved values
-  debug:
-    msg:
-      - "Namespace: {{ target_namespace }}"
-      - "StorageClass: {{ target_storage }}"
-      - "Source StorageMap: {{ source_storagemap }}"
-      - "Source NetworkMap ID: {{ source_networkmap_id }}"
-      - "Target Network: {{ target_networkmap }} in {{ target_network_namespace }}"
-
-##################################################################
-## STEP 1: Create NetworkMap
-##################################################################
 - name: Create NetworkMap
   kubernetes.core.k8s:
     state: present
@@ -49,41 +5,7 @@
       apiVersion: forklift.konveyor.io/v1beta1
       kind: NetworkMap
       metadata:
-        name: "{{ network_map_name }}"
-        namespace: "{{ mtv_namespace }}"
-      spec:
-        provider:
-          source:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: Provider
-            name: "{{ source_provider_name }}"
-            namespace: "{{ mtv_namespace }}"
-            uid: "{{ source_provider_uid }}"
-          destination:
-            apiVersion: forklift.konveyor.io/v1beta1
-            kind: Provider
-            name: "{{ destination_provider_name }}"
-            namespace: "{{ mtv_namespace }}"
-            uid: "{{ destination_provider_uid }}"
-        map:
-          - destination:
-              name: "{{ target_networkmap }}"
-              namespace: "{{ target_network_namespace }}"
-              type: multus
-            source:
-              id: "{{ source_networkmap_id }}"
-
-##################################################################
-## STEP 2: Create StorageMap
-##################################################################
-- name: Create StorageMap
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: forklift.konveyor.io/v1beta1
-      kind: StorageMap
-      metadata:
-        name: "{{ storage_map_name }}"
+        name: "netmap-{{ plan_group.key | lower }}"
         namespace: "{{ mtv_namespace }}"
       spec:
         provider:
@@ -101,21 +23,20 @@
             uid: "{{ destination_provider_uid }}"
         map:
           - source:
-              id : "{{ source_storagemap_id }}"
+              id: "{{ source_networkmap_id }}"
             destination:
-              storageClass: "{{ target_storage }}"
+              name: "{{ target_networkmap }}"
+              namespace: "{{ target_network_namespace }}"
+              type: multus
 
-##################################################################
-## STEP 3: Create Migration Plan
-##################################################################
-- name: Create Migration Plan
+- name: Create StorageMap
   kubernetes.core.k8s:
     state: present
     definition:
       apiVersion: forklift.konveyor.io/v1beta1
-      kind: Plan
+      kind: StorageMap
       metadata:
-        name: "{{ plan_name }}"
+        name: "storagemap-{{ plan_group.key | lower }}"
         namespace: "{{ mtv_namespace }}"
       spec:
         provider:
@@ -124,51 +45,56 @@
             kind: Provider
             name: "{{ source_provider_name }}"
             namespace: "{{ mtv_namespace }}"
+            uid: "{{ source_provider_uid }}"
           destination:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: Provider
             name: "{{ destination_provider_name }}"
             namespace: "{{ mtv_namespace }}"
+            uid: "{{ destination_provider_uid }}"
+        map:
+          - source:
+              id: "{{ source_storagemap_id }}"
+            destination:
+              storageClass: "{{ target_storage }}"
+
+- name: Create Migration Plan
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: forklift.konveyor.io/v1beta1
+      kind: Plan
+      metadata:
+        name: "{{ plan_group.key }}"
+        namespace: "{{ mtv_namespace }}"
+      spec:
+        provider:
+          source:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Provider
+            name: "{{ source_provider_name }}"
+            namespace: "{{ mtv_namespace }}"
+            uid: "{{ source_provider_uid }}"
+          destination:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Provider
+            name: "{{ destination_provider_name }}"
+            namespace: "{{ mtv_namespace }}"
+            uid: "{{ destination_provider_uid }}"
         map:
           network:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: NetworkMap
-            name: "{{ network_map_name }}"
+            name: "netmap-{{ plan_group.key | lower }}"
             namespace: "{{ mtv_namespace }}"
           storage:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: StorageMap
-            name: "{{ storage_map_name }}"
+            name: "storagemap-{{ plan_group.key | lower }}"
             namespace: "{{ mtv_namespace }}"
-        namespace: "{{ mtv_namespace }}"
-        targetNamespace: "{{ target_namespace }}"
-        vms: "{{ vm_list }}"
-        warm: true
+        targetNamespace: "{{ plan_group.value.rows[0]['Target Namespace'] }}"
+        pvcNameTemplateUseGenerateName: true
         preserveStaticIPs: true
-
-##################################################################
-## STEP 4: Wait until Plan is Ready, then patch ownerReferences
-##################################################################
-- name: Wait for plan to become Ready
-  register: plan_info
-  retries: 10
-  delay: 6
-  until: >
-    plan_info.resources[0].status.conditions is defined and
-    (
-      plan_info.resources[0].status.conditions
-      | selectattr('type', 'equalto', 'Ready')
-      | selectattr('status', 'equalto', 'True')
-      | list | length
-    ) > 0
-  failed_when: plan_info.resources | length == 0
-  delegate_to: localhost
-  kubernetes.core.k8s_info:
-    api_version: forklift.konveyor.io/v1beta1
-    kind: Plan
-    name: "{{ plan_name }}"
-    namespace: "{{ target_namespace }}"
-
-# Patch ownerReferences once Plan is Ready
-- name: Patch OwnerReferences
-  include_tasks: patch_owner_references.yaml
+        migrateSharedDisks: true
+        warm: true
+        vms: "{{ plan_group.value.vms }}"
