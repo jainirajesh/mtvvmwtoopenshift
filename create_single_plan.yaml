@@ -58,11 +58,13 @@
             kind: Provider
             name: "{{ source_provider_name }}"
             namespace: openshift-mtv
+            uid: "{{ source_provider_uid }}"
           destination:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: Provider
             name: "{{ destination_provider_name }}"
             namespace: openshift-mtv
+            uid: "{{ destination_provider_uid }}"
         map:
           - destination:
               name: "{{ target_networkmap }}"
@@ -90,11 +92,13 @@
             kind: Provider
             name: "{{ source_provider_name }}"
             namespace: openshift-mtv
+            uid: "{{ source_provider_uid }}
           destination:
             apiVersion: forklift.konveyor.io/v1beta1
             kind: Provider
             name: "{{ destination_provider_name }}"
             namespace: openshift-mtv
+            uid: "{{ destination_provider_uid }}"
         map:
           - source:
               id : "{{ source_storagemap_id }}"
