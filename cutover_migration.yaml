@@ -2,7 +2,6 @@
 - name: Cutover multiple migration plans after DiskTransfer completes
   hosts: localhost
   gather_facts: false
-
   vars_files:
     - vars.yaml  # Optional external vars
     
@@ -23,17 +22,20 @@
       loop_control:
         loop_var: item
       register: plan_info_all
-      failed_when: false   # check failure after loop
+      failed_when: false  # We handle failure manually below
+
+    - name: Set missing plans list
+      set_fact:
+        missing_plans: >-
+          {{ plan_info_all.results
+             | selectattr('resources', 'defined')
+             | selectattr('resources', 'equalto', [])
+             | map(attribute='item')
+             | list }}
 
     - name: Fail if any Plan is missing
       fail:
         msg: "One or more plans not found: {{ missing_plans }}"
-      vars:
-        missing_plans: >-
-          {{ plan_info_all.results
-             | selectattr('resources', 'length', 'equalto', 0)
-             | map(attribute='item')
-             | list }}
       when: missing_plans | length > 0
 
     - name: Get Migrations for each Plan
