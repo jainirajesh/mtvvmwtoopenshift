@@ -1,72 +1,86 @@
 ---
-- name: Cutover multiple migration plans from survey input
+- name: Cutover multiple migration plans after DiskTransfer completes
   hosts: localhost
   gather_facts: false
-
-  vars_files:
-    - vars.yaml  # Optional external vars
 
   vars:
     cutover_namespace: "{{ mtv_namespace }}"
     plan_names_list: "{{ plan_names.split(',') | map('trim') | list }}"
     vm_name: rhel-9
+    disktransfer_total_mb: 30720
 
   tasks:
-    - name: Validate that each plan exists
+    - name: Validate that each Plan exists
       kubernetes.core.k8s_info:
         api_version: forklift.konveyor.io/v1beta1
         kind: Plan
         name: "{{ item }}"
         namespace: "{{ cutover_namespace }}"
-      register: plan_info
-      failed_when: plan_info.resources | length == 0
       loop: "{{ plan_names_list }}"
       loop_control:
         loop_var: item
+      register: plan_info
+      failed_when: plan_info.results | selectattr('resources', 'length', 'equalto', 0) | list | length > 0
 
-    - name: Get the latest Migration for plan {{ item }}
+    - name: Get Migrations for each Plan
       kubernetes.core.k8s_info:
         api_version: forklift.konveyor.io/v1beta1
         kind: Migration
         namespace: "{{ cutover_namespace }}"
         label_selectors:
           - "plan.name={{ item }}"
-      register: migration_info
       loop: "{{ plan_names_list }}"
       loop_control:
         loop_var: item
+      register: migrations_info
 
-    - name: Set migration to latest migration for plan {{ item }}
+    - name: Find latest Migration for each Plan
       set_fact:
-        latest_migration: "{{ (migration_info.results[ansible_loop.index0].resources | sort(attribute='metadata.creationTimestamp'))[-1] }}"
-      loop: "{{ plan_names_list }}"
-      loop_control:
-        loop_var: item
-
-    - name: Check DiskTransfer phase for VM {{ vm_name }} in migration {{ latest_migration.metadata.name }}
-      set_fact:
-        disk_transfer_phase: >-
+        latest_migrations: >-
           {{
-            latest_migration.status.vms
-            | selectattr('name', 'equalto', vm_name)
-            | map(attribute='pipeline')
-            | map('selectattr', 'name', 'equalto', 'DiskTransfer')
-            | map('first')
-            | map(attribute='phase')
-            | first
+            migrations_info.results
+            | zip(plan_names_list)
+            | map('community.general.json_query', "[?resources]|[?resources]|{plan_name: @1, migration: resources | sort_by(@, &metadata.creationTimestamp) | [-1]}") 
+            | list
           }}
 
-    - name: Fail if DiskTransfer phase is not Completed for {{ latest_migration.metadata.name }}
+    - name: Fail if no Migration found for any Plan
       fail:
-        msg: "DiskTransfer phase is not completed for migration {{ latest_migration.metadata.name }}. Cannot start Cutover."
-      when: disk_transfer_phase != "Completed"
+        msg: "No Migration found for plan {{ item.plan_name }}"
+      loop: "{{ latest_migrations }}"
+      loop_control:
+        loop_var: item
+      when: item.migration is not defined or item.migration == {}
 
-    - name: Patch Migration to start Cutover for {{ latest_migration.metadata.name }}
+    - name: Check DiskTransfer phase for VM {{ vm_name }} in each latest Migration
+      set_fact:
+        disk_transfer_status_list: >-
+          {{
+            latest_migrations
+            | map(attribute='migration.status.vms')
+            | map('selectattr', 'name', 'equalto', vm_name)
+            | map('map', 'pipeline')
+            | map('map', 'selectattr', 'name', 'equalto', 'DiskTransfer')
+            | map('map', 'first')
+            | map('map', 'phase')
+            | map('first')
+            | list
+          }}
+
+    - name: Fail if DiskTransfer is not Completed in any Migration
+      fail:
+        msg: "DiskTransfer phase is not completed for migration of plan {{ item.0.plan_name }}."
+      loop: "{{ zip(latest_migrations, disk_transfer_status_list) | list }}"
+      loop_control:
+        loop_var: item
+      when: item.1 != 'Completed'
+
+    - name: Patch Migration to start Cutover phase
       kubernetes.core.k8s:
         api_version: forklift.konveyor.io/v1beta1
         kind: Migration
         namespace: "{{ cutover_namespace }}"
-        name: "{{ latest_migration.metadata.name }}"
+        name: "{{ item.migration.metadata.name }}"
         merge_type: strategic
         patch:
           status:
@@ -86,6 +100,6 @@
                         progress:
                           completed: 1
                           total: "{{ disktransfer_total_mb }}"
-      loop: "{{ plan_names_list }}"
+      loop: "{{ latest_migrations }}"
       loop_control:
         loop_var: item
