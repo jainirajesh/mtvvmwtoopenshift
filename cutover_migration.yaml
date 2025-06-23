@@ -1,79 +1,43 @@
 ---
-- name: Start OpenShift cutover after disk transfer pod completion
+- name: Start cutover based on Migration Plan name in OpenShift
   hosts: localhost
   gather_facts: no
 
   vars:
-    openshift_namespace: openshift-mtv          # Change to your OpenShift namespace
-    disk_transfer_label_selector: "app=disk-transfer"  # Label to find disk transfer pod
-    cutover_job_name: test-cutover13               # Name of the cutover job to create
+    openshift_namespace: openshift-mtv
+    migration_plan_name: test-cutover13         # Set this to the name of your MigrationPlan
+    migration_cr_name: cutover-{{ migration_plan_name }}-{{ ansible_date_time.epoch }}
 
   tasks:
-    - name: Get disk transfer pod by label
-      community.kubernetes.k8s_info:
-        kind: Pod
-        namespace: "{{ openshift_namespace }}"
-        label_selectors:
-          - "{{ disk_transfer_label_selector }}"
-      register: pod_list
-
-    - name: Fail if no disk transfer pod found
-      fail:
-        msg: "No disk transfer pod found with label '{{ disk_transfer_label_selector }}'"
-      when: pod_list.resources | length == 0
-
-    - name: Set disk_transfer_pod_name to first pod found
-      set_fact:
-        disk_transfer_pod_name: "{{ pod_list.resources[0].metadata.name }}"
-
-    - name: Wait for disk transfer pod to be succeeded
-      community.kubernetes.k8s_info:
-        kind: Pod
-        namespace: "{{ openshift_namespace }}"
-        name: "{{ disk_transfer_pod_name }}"
-      register: pod_info
-      retries: 10
-      delay: 15
-      until: pod_info.resources[0].status.phase == "Succeeded"
-
-    - name: Fail if disk transfer pod is not succeeded
-      fail:
-        msg: "Disk transfer pod '{{ disk_transfer_pod_name }}' did not complete successfully. Status: {{ pod_info.resources[0].status.phase }}"
-      when: pod_info.resources[0].status.phase != "Succeeded"
-
-    - name: Delete existing cutover job if exists (to allow fresh run)
-      community.kubernetes.k8s:
-        state: absent
-        kind: Job
-        namespace: "{{ openshift_namespace }}"
-        name: "{{ cutover_job_name }}"
-      ignore_errors: yes
-
-    - name: Create cutover job to start cutover process
+    - name: Trigger cutover Migration CR
       community.kubernetes.k8s:
         state: present
         namespace: "{{ openshift_namespace }}"
         definition:
-          apiVersion: batch/v1
-          kind: Job
+          apiVersion: migration.openshift.io/v1alpha1
+          kind: Migration
           metadata:
-            name: "{{ cutover_job_name }}"
+            name: "{{ migration_cr_name }}"
           spec:
-            template:
-              spec:
-                containers:
-                - name: cutover-container
-                  image: your-cutover-image:latest      # Change to your cutover image
-                  command: ["your-cutover-command"]     # Change to your cutover command
-                restartPolicy: Never
-            backoffLimit: 1
+            plan: "{{ migration_plan_name }}"
+            stage: false
+            quiescePods: true
+            keepAnnotations: true
+            cutover: true
 
-    - name: Confirm cutover job started (active pods > 0)
-      shell: oc get job "{{ cutover_job_name }}" -n "{{ openshift_namespace }}" -o jsonpath='{.status.active}'
-      register: job_active
-      changed_when: false
-      failed_when: job_active.stdout == "" or job_active.stdout == "0"
+    - name: Wait for Migration to complete (cutover)
+      community.kubernetes.k8s_info:
+        api_version: migration.openshift.io/v1alpha1
+        kind: Migration
+        namespace: "{{ openshift_namespace }}"
+        name: "{{ migration_cr_name }}"
+      register: migration_status
+      retries: 20
+      delay: 30
+      until: >
+        migration_status.resources[0].status.conditions | selectattr('type', 'equalto', 'Succeeded') | selectattr('status', 'equalto', 'True') | list | length > 0
 
-    - name: Notify cutover job started
+    - name: Show successful cutover message
       debug:
-        msg: "Cutover job '{{ cutover_job_name }}' started successfully."
+        msg: "Cutover for migration plan '{{ migration_plan_name }}' completed successfully."
+
