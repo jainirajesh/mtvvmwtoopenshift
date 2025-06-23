@@ -98,3 +98,54 @@
         migrateSharedDisks: true
         warm: true
         vms: "{{ plan_group.value.vms }}"
+
+- name: Wait until Plan is Ready
+  kubernetes.core.k8s_info:
+    api_version: forklift.konveyor.io/v1beta1
+    kind: Plan
+    name: "{{ plan_group.key }}"
+    namespace: "{{ mtv_namespace }}"
+  register: plan_info
+  retries: 10
+  delay: 5
+  until: plan_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length > 0
+
+- name: Get Plan UID
+  set_fact:
+    plan_uid: "{{ plan_info.resources[0].metadata.uid }}"
+
+- name: Patch ownerReference in NetworkMap
+  kubernetes.core.k8s:
+    state: patched
+    kind: NetworkMap
+    api_version: forklift.konveyor.io/v1beta1
+    name: "netmap-{{ plan_group.key | lower }}"
+    namespace: "{{ mtv_namespace }}"
+    merge_type: strategic
+    definition:
+      metadata:
+        ownerReferences:
+          - apiVersion: forklift.konveyor.io/v1beta1
+            kind: Plan
+            name: "{{ plan_group.key }}"
+            uid: "{{ plan_uid }}"
+            controller: true
+            blockOwnerDeletion: true
+
+- name: Patch ownerReference in StorageMap
+  kubernetes.core.k8s:
+    state: patched
+    kind: StorageMap
+    api_version: forklift.konveyor.io/v1beta1
+    name: "storagemap-{{ plan_group.key | lower }}"
+    namespace: "{{ mtv_namespace }}"
+    merge_type: strategic
+    definition:
+      metadata:
+        ownerReferences:
+          - apiVersion: forklift.konveyor.io/v1beta1
+            kind: Plan
+            name: "{{ plan_group.key }}"
+            uid: "{{ plan_uid }}"
+            controller: true
+            blockOwnerDeletion: true
