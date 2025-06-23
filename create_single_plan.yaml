@@ -70,7 +70,6 @@
               type: multus
             source:
               #id: "{{ source_networkmap_id }}"
-              name: "{{ source_networkmap }}"
 
 ##################################################################
 ## STEP 2: Create StorageMap
@@ -98,8 +97,7 @@
             namespace: openshift-mtv
         map:
           - source:
-              type: vmware
-              name: "{{ source_storagemap }}"
+              id : "{{ source_storagemap_id }}"
             destination:
               storageClass: "{{ target_storage }}"
 
