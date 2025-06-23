@@ -1,27 +1,53 @@
 ---
-- name: Start Cutover after DiskTransfer completes
+- name: Cutover multiple migration plans from survey input
   hosts: localhost
-  gather_facts: no
+  gather_facts: false
+
+  vars_files:
+    - vars.yaml  # Optional external vars
+
   vars:
-    migration_namespace: openshift-mtv
-    migration_name: test-cutover13-migration-4lhz9
+    cutover_namespace: "{{ mtv_namespace }}"
+    plan_names_list: "{{ plan_names.split(',') | map('trim') | list }}"
     vm_name: rhel-9
+
   tasks:
+    - name: Validate that each plan exists
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Plan
+        name: "{{ item }}"
+        namespace: "{{ cutover_namespace }}"
+      register: plan_info
+      failed_when: plan_info.resources | length == 0
+      loop: "{{ plan_names_list }}"
+      loop_control:
+        loop_var: item
 
-    - name: Get current migration resource
-      command: >
-        kubectl get migration {{ migration_name }} -n {{ migration_namespace }} -o json
-      register: migration_json
+    - name: Get the latest Migration for plan {{ item }}
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Migration
+        namespace: "{{ cutover_namespace }}"
+        label_selectors:
+          - "plan.name={{ item }}"
+      register: migration_info
+      loop: "{{ plan_names_list }}"
+      loop_control:
+        loop_var: item
 
-    - name: Parse migration JSON
+    - name: Set migration to latest migration for plan {{ item }}
       set_fact:
-        migration_data: "{{ migration_json.stdout | from_json }}"
+        latest_migration: "{{ (migration_info.results[ansible_loop.index0].resources | sort(attribute='metadata.creationTimestamp'))[-1] }}"
+      loop: "{{ plan_names_list }}"
+      loop_control:
+        loop_var: item
 
-    - name: Find DiskTransfer phase for VM {{ vm_name }}
+    - name: Check DiskTransfer phase for VM {{ vm_name }} in migration {{ latest_migration.metadata.name }}
       set_fact:
         disk_transfer_phase: >-
           {{
-            migration_data.status.vms
+            latest_migration.status.vms
             | selectattr('name', 'equalto', vm_name)
             | map(attribute='pipeline')
             | map('selectattr', 'name', 'equalto', 'DiskTransfer')
@@ -30,55 +56,36 @@
             | first
           }}
 
-    - name: Check if DiskTransfer phase is Completed
-      debug:
-        msg: "DiskTransfer phase is {{ disk_transfer_phase }}"
-    
-    - name: Fail if DiskTransfer not completed yet
+    - name: Fail if DiskTransfer phase is not Completed for {{ latest_migration.metadata.name }}
       fail:
-        msg: "DiskTransfer phase is not completed. Cannot start Cutover."
+        msg: "DiskTransfer phase is not completed for migration {{ latest_migration.metadata.name }}. Cannot start Cutover."
       when: disk_transfer_phase != "Completed"
 
-    - name: Prepare patch to start Cutover
-      set_fact:
-        cutover_patch: |
-          {
-            "status": {
-              "vms": [
-                {
-                  "name": "{{ vm_name }}",
-                  "pipeline": [
-                    {
-                      "name": "Cutover",
-                      "phase": "Running",
-                      "started": "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}",
-                      "progress": {
-                        "completed": 1,
-                        "total": 30720
-                      },
-                      "tasks": [
-                        {
-                          "name": "[vSAN-Datastore] 1b453068-0e51-116b-a94e-b8599f0581ac/rhel-9.vmdk",
-                          "phase": "Running",
-                          "started": "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}",
-                          "progress": {
-                            "completed": 1,
-                            "total": 30720
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          }
-
-    - name: Patch migration to start Cutover
-      command: >
-        kubectl patch migration {{ migration_name }} -n {{ migration_namespace }} --type=merge -p '{{ cutover_patch }}'
-      register: patch_result
-
-    - name: Show patch result
-      debug:
-        var: patch_result.stdout
+    - name: Patch Migration to start Cutover for {{ latest_migration.metadata.name }}
+      kubernetes.core.k8s:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Migration
+        namespace: "{{ cutover_namespace }}"
+        name: "{{ latest_migration.metadata.name }}"
+        merge_type: strategic
+        patch:
+          status:
+            vms:
+              - name: "{{ vm_name }}"
+                pipeline:
+                  - name: Cutover
+                    phase: Running
+                    started: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+                    progress:
+                      completed: 1
+                      total: "{{ disktransfer_total_mb }}"
+                    tasks:
+                      - name: "[vSAN-Datastore] 1b453068-0e51-116b-a94e-b8599f0581ac/rhel-9.vmdk"
+                        phase: Running
+                        started: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+                        progress:
+                          completed: 1
+                          total: "{{ disktransfer_total_mb }}"
+      loop: "{{ plan_names_list }}"
+      loop_control:
+        loop_var: item
