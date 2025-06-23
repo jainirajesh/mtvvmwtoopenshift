@@ -1,38 +1,45 @@
-- name: Start Multiple Migration Plans from Survey and CSV
+- name: Start Migration Plans from CSV with filtered input
   hosts: localhost
   gather_facts: false
 
   vars_files:
-    - vars.yaml  # Optional
+    - vars.yaml  # Contains `plan_names: win230601,linux230601`
 
   tasks:
-    - name: Read Migration Plan Namespace Mapping from CSV
+    - name: Read full CSV with migration plan data
       community.general.read_csv:
         path: r_vm_list_to_migrate.csv
       register: migration_data
 
-    - name: Set filtered plans
+    - name: Extract only relevant columns: Plan Name & Namespace
+      set_fact:
+        plan_lookup: >-
+          {{
+            migration_data.list
+            | map(attribute='Plan Name')
+            | zip(migration_data.list | map(attribute='Target Namespace'))
+            | map('reverse') | map('combine', [{'name': item[1], 'namespace': item[0]} for item in _])
+          }}
+
+    - name: Filter by input plan names
       set_fact:
         filtered_plans: >-
           {{
             plan_names.split(',') | map('trim') | list
-            | map('extract', dict(
-                _items=migration_data.list | items2dict(key_name='name', value_name='namespace'),
-                default='')
-            )
+            | map('extract', plan_lookup | items2dict(key_name='name', value_name='namespace'), default='')
             | zip(plan_names.split(',') | map('trim') | list)
-            | map('reverse')   # get [{name, namespace}]
+            | selectattr('0', 'ne', '')  # Only include if namespace is found
+            | map('reverse')
             | map('combine', [{'name': item[0], 'namespace': item[1]} for item in _])
           }}
-      vars:
-        _items: "{{ migration_data.list | items2dict(key_name='name', value_name='namespace') }}"
-      delegate_to: localhost
 
     - name: Fail if any plan is missing a namespace
       fail:
-        msg: "Missing namespace for plan: {{ item.name }}"
+        msg: "Missing namespace for plan: {{ item }}"
       when: item.namespace == ''
       loop: "{{ filtered_plans }}"
+      loop_control:
+        loop_var: item
 
     - name: Start Migration Plan "{{ item.name }}"
       kubernetes.core.k8s:
