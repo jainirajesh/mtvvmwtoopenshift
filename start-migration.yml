@@ -1,24 +1,57 @@
 ---
-- name: Start Multiple Migration Plans from Survey
+- name: Start Multiple Migration Plans from CSV
   hosts: localhost
   gather_facts: false
-  vars_files:
-    - vars.yaml  # Optional external vars
 
   tasks:
-    - name: Start Migration Plan "{{ item }}"
+    - name: Read CSV content (base64)
+      slurp:
+        src: vm_list_to_migrate.csv
+      register: raw_csv
+
+    - name: Decode and split CSV into lines
+      set_fact:
+        csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
+
+    - name: Extract CSV headers
+      set_fact:
+        csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
+
+    - name: Parse each row into a dictionary
+      set_fact:
+        all_rows: "{{ all_rows | default([]) + [dict(csv_headers | zip(row.split(',') | map('trim') | list))] }}"
+      loop: "{{ csv_lines[1:] }}"
+      loop_control:
+        loop_var: row
+      when: row.strip() != ''
+
+    - name: Extract unique plan + namespace mappings
+      set_fact:
+        unique_plans: >-
+          {{
+            all_rows
+            | map(attribute='Plan Name') | list
+            | unique
+            | map('extract', all_rows | items2dict(key_name='Plan Name'))
+            | map('combine', [{'Plan Name': item['Plan Name'], 'Target Namespace': item['Target Namespace']}])
+            | list
+          }}
+      vars:
+        grouped_by_plan: "{{ all_rows | groupby('Plan Name') | items2dict(key_name='key', value_name='value') }}"
+
+    - name: Start Migration Plan for each unique Plan Name and Namespace
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            generateName: "{{ item }}-migration-"
+            generateName: "{{ item['Plan Name'] }}-migration-"
             namespace: openshift-mtv
           spec:
             plan:
-              name: "{{ item }}"
+              name: "{{ item['Plan Name'] }}"
               namespace: openshift-mtv
-      loop: "{{ plan_names.split(',') | map('trim') | list }}"
+      loop: "{{ unique_plans }}"
       loop_control:
-        loop_var: item
+        label: "{{ item['Plan Name'] }}"
