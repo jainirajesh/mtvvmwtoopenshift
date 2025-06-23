@@ -26,7 +26,7 @@
       set_fact:
         synced_plans: >-
           {{ synced_plans | default([]) +
-             ([item.item] if item.resources[0].status.conditions | selectattr('type', 'equalto', 'Transfer completed.') | selectattr('reason', 'equalto', 'Transfer completed.') | list | length > 0 else []) }}
+             ([item.item] if item.resources[0].status.conditions | selectattr('type', 'equalto', 'Executing') | selectattr('reason', 'equalto', 'Transfer completed.') | list | length > 0 else []) }}
       loop: "{{ plan_info.results }}"
       loop_control:
         loop_var: item
