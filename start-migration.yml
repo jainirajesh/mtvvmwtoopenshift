@@ -5,6 +5,7 @@
 
   vars:
     csv_file: "vm_list_to_migrate.csv"
+    mtv_namespace: "openshift-mtv"
 
   tasks:
     - name: Read CSV content (base64)
@@ -28,27 +29,27 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Build unique plan list (Plan Name + Target Namespace)
+    - name: Build unique plan list (Plan Name only)
       set_fact:
-        unique_plans: "{{ unique_plans | default([]) + [ {'Plan Name': item['Plan Name'], 'Target Namespace': item['Target Namespace']} ] }}"
+        unique_plans: "{{ unique_plans | default([]) + [ item['Plan Name'] ] }}"
       loop: "{{ all_rows }}"
-      when: item['Plan Name'] not in (unique_plans | default([]) | map(attribute='Plan Name') | list)
+      when: item['Plan Name'] not in unique_plans | default([])
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Start Migration Plan for each unique Plan Name and Namespace
+    - name: Start Migration Plan for each unique Plan Name
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            generateName: "{{ item['Plan Name'] }}-migration-"
-            namespace: "{{ item['Target Namespace'] }}"
+            generateName: "{{ item }}-migration-"
+            namespace: "{{ mtv_namespace }}"
           spec:
             plan:
-              name: "{{ item['Plan Name'] }}"
-              namespace: "{{ item['Target Namespace'] }}"
+              name: "{{ item }}"
+              namespace: "{{ mtv_namespace }}"
       loop: "{{ unique_plans }}"
       loop_control:
-        label: "{{ item['Plan Name'] }}"
+        label: "{{ item }}"
