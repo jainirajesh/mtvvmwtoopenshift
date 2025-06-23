@@ -6,8 +6,10 @@ vcenter_password: "{{ lookup('env', 'VCENTER_PASSWORD') }}"
 
 mtv_namespace: "openshift-mtv"
 source_provider_name: "vmware"
-destination_provider_name: "host"
+source_provider_uid: "853a87c8-da62-48e6-9fdf-ab5f5614389a"
 
+destination_provider_name: "host"
+destination_provider_uid: "cfd1b453-2705-41b9-bb3a-85fd005c3a48"
 selected_vm_id: "vm-30730"
 selected_vm_name: "rhel-8"
 
