@@ -1,0 +1,63 @@
+---
+- name: Start Selected Migration Plans from Survey Input
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    csv_file: "vm_list_to_migrate.csv"
+    mtv_namespace: "openshift-mtv"
+    user_input_plan_names: "{{ plan_names | default('') }}"  # Survey input
+
+  tasks:
+    - name: Read CSV content (base64)
+      slurp:
+        src: "{{ csv_file }}"
+      register: raw_csv
+
+    - name: Decode and split CSV into lines
+      set_fact:
+        csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
+
+    - name: Extract CSV headers
+      set_fact:
+        csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
+
+    - name: Parse each row into a dictionary
+      set_fact:
+        all_rows: "{{ all_rows | default([]) + [dict(csv_headers | zip(row.split(',') | map('trim') | list))] }}"
+      loop: "{{ csv_lines[1:] }}"
+      loop_control:
+        loop_var: row
+      when: row.strip() != ''
+
+    - name: Extract unique plan names from user input
+      set_fact:
+        selected_plans: "{{ user_input_plan_names.split(',') | map('trim') | list }}"
+
+    - name: Filter plans from CSV that match user input
+      set_fact:
+        plans_to_start: >-
+          {{
+            all_rows
+            | selectattr('Plan Name', 'in', selected_plans)
+            | map(attribute='Plan Name')
+            | list
+            | unique
+          }}
+
+    - name: Start only selected Migration Plans
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: Migration
+          metadata:
+            generateName: "{{ item }}-migration-"
+            namespace: "{{ mtv_namespace }}"
+          spec:
+            plan:
+              name: "{{ item }}"
+              namespace: "{{ mtv_namespace }}"
+      loop: "{{ plans_to_start }}"
+      loop_control:
+        label: "{{ item }}"
