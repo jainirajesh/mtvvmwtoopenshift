@@ -1,121 +1,79 @@
 ---
-- name: Cutover multiple migration plans after DiskTransfer completes
+- name: Start OpenShift cutover after disk transfer pod completion
   hosts: localhost
-  gather_facts: false
-  vars_files:
-    - vars.yaml  # Optional external vars
-    
+  gather_facts: no
+
   vars:
-    cutover_namespace: "{{ mtv_namespace }}"
-    plan_names_list: "{{ plan_names.split(',') | map('trim') | list }}"
-    vm_name: rhel-9
-    disktransfer_total_mb: 30720
+    openshift_namespace: openshift-mtv          # Change to your OpenShift namespace
+    disk_transfer_label_selector: "app=disk-transfer"  # Label to find disk transfer pod
+    cutover_job_name: test-cutover13               # Name of the cutover job to create
 
   tasks:
-    - name: Validate that each Plan exists
-      kubernetes.core.k8s_info:
-        api_version: forklift.konveyor.io/v1beta1
-        kind: Plan
-        name: "{{ item }}"
-        namespace: "{{ cutover_namespace }}"
-      loop: "{{ plan_names_list }}"
-      loop_control:
-        loop_var: item
-      register: plan_info_all
-      failed_when: false  # We handle failure manually below
-
-    - name: Set missing plans list
-      set_fact:
-        missing_plans: >-
-          {{ plan_info_all.results
-             | selectattr('resources', 'defined')
-             | selectattr('resources', 'equalto', [])
-             | map(attribute='item')
-             | list }}
-
-    - name: Fail if any Plan is missing
-      fail:
-        msg: "One or more plans not found: {{ missing_plans }}"
-      when: missing_plans | length > 0
-
-    - name: Get Migrations for each Plan
-      kubernetes.core.k8s_info:
-        api_version: forklift.konveyor.io/v1beta1
-        kind: Migration
-        namespace: "{{ cutover_namespace }}"
+    - name: Get disk transfer pod by label
+      community.kubernetes.k8s_info:
+        kind: Pod
+        namespace: "{{ openshift_namespace }}"
         label_selectors:
-          - "plan.name={{ item }}"
-      loop: "{{ plan_names_list }}"
-      loop_control:
-        loop_var: item
-      register: migrations_info
+          - "{{ disk_transfer_label_selector }}"
+      register: pod_list
 
-    - name: Find latest Migration for each Plan
-      set_fact:
-        latest_migrations: >-
-          {{
-            migrations_info.results
-            | zip(plan_names_list)
-            | map('community.general.json_query', "[?resources]|[?resources]|{plan_name: @1, migration: resources | sort_by(@, &metadata.creationTimestamp) | [-1]}") 
-            | list
-          }}
-
-    - name: Fail if no Migration found for any Plan
+    - name: Fail if no disk transfer pod found
       fail:
-        msg: "No Migration found for plan {{ item.plan_name }}"
-      loop: "{{ latest_migrations }}"
-      loop_control:
-        loop_var: item
-      when: item.migration is not defined or item.migration == {}
+        msg: "No disk transfer pod found with label '{{ disk_transfer_label_selector }}'"
+      when: pod_list.resources | length == 0
 
-    - name: Check DiskTransfer phase for VM {{ vm_name }} in each latest Migration
+    - name: Set disk_transfer_pod_name to first pod found
       set_fact:
-        disk_transfer_status_list: >-
-          {{
-            latest_migrations
-            | map(attribute='migration.status.vms')
-            | map('selectattr', 'name', 'equalto', vm_name)
-            | map('map', 'pipeline')
-            | map('map', 'selectattr', 'name', 'equalto', 'DiskTransfer')
-            | map('map', 'first')
-            | map('map', 'phase')
-            | map('first')
-            | list
-          }}
+        disk_transfer_pod_name: "{{ pod_list.resources[0].metadata.name }}"
 
-    - name: Fail if DiskTransfer is not Completed in any Migration
+    - name: Wait for disk transfer pod to be succeeded
+      community.kubernetes.k8s_info:
+        kind: Pod
+        namespace: "{{ openshift_namespace }}"
+        name: "{{ disk_transfer_pod_name }}"
+      register: pod_info
+      retries: 10
+      delay: 15
+      until: pod_info.resources[0].status.phase == "Succeeded"
+
+    - name: Fail if disk transfer pod is not succeeded
       fail:
-        msg: "DiskTransfer phase is not completed for migration of plan {{ item.0.plan_name }}."
-      loop: "{{ zip(latest_migrations, disk_transfer_status_list) | list }}"
-      loop_control:
-        loop_var: item
-      when: item.1 != 'Completed'
+        msg: "Disk transfer pod '{{ disk_transfer_pod_name }}' did not complete successfully. Status: {{ pod_info.resources[0].status.phase }}"
+      when: pod_info.resources[0].status.phase != "Succeeded"
 
-    - name: Patch Migration to start Cutover phase
-      kubernetes.core.k8s:
-        api_version: forklift.konveyor.io/v1beta1
-        kind: Migration
-        namespace: "{{ cutover_namespace }}"
-        name: "{{ item.migration.metadata.name }}"
-        merge_type: strategic
-        patch:
-          status:
-            vms:
-              - name: "{{ vm_name }}"
-                pipeline:
-                  - name: Cutover
-                    phase: Running
-                    started: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
-                    progress:
-                      completed: 1
-                      total: "{{ disktransfer_total_mb }}"
-                    tasks:
-                      - name: "[vSAN-Datastore] 1b453068-0e51-116b-a94e-b8599f0581ac/rhel-9.vmdk"
-                        phase: Running
-                        started: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
-                        progress:
-                          completed: 1
-                          total: "{{ disktransfer_total_mb }}"
-      loop: "{{ latest_migrations }}"
-      loop_control:
-        loop_var: item
+    - name: Delete existing cutover job if exists (to allow fresh run)
+      community.kubernetes.k8s:
+        state: absent
+        kind: Job
+        namespace: "{{ openshift_namespace }}"
+        name: "{{ cutover_job_name }}"
+      ignore_errors: yes
+
+    - name: Create cutover job to start cutover process
+      community.kubernetes.k8s:
+        state: present
+        namespace: "{{ openshift_namespace }}"
+        definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: "{{ cutover_job_name }}"
+          spec:
+            template:
+              spec:
+                containers:
+                - name: cutover-container
+                  image: your-cutover-image:latest      # Change to your cutover image
+                  command: ["your-cutover-command"]     # Change to your cutover command
+                restartPolicy: Never
+            backoffLimit: 1
+
+    - name: Confirm cutover job started (active pods > 0)
+      shell: oc get job "{{ cutover_job_name }}" -n "{{ openshift_namespace }}" -o jsonpath='{.status.active}'
+      register: job_active
+      changed_when: false
+      failed_when: job_active.stdout == "" or job_active.stdout == "0"
+
+    - name: Notify cutover job started
+      debug:
+        msg: "Cutover job '{{ cutover_job_name }}' started successfully."
