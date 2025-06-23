@@ -67,6 +67,7 @@
       metadata:
         name: "{{ plan_group.key }}"
         namespace: "{{ mtv_namespace }}"
+        generation: 3
       spec:
         provider:
           source:
