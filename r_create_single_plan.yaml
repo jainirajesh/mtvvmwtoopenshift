@@ -1,0 +1,137 @@
+- name: DEBUG plan_group
+  debug:
+    var: plan_group
+
+- name: Set plan name, VM list, and plan rows
+  set_fact:
+    plan_name: "{{ plan_group.key }}"
+    vm_list: "{{ plan_group.value.vms }}"
+    plan_rows: "{{ plan_group.value.rows }}"
+
+- name: Set first row
+  set_fact:
+    first_row: "{{ plan_rows[0] }}"
+
+- name: Set target and map names
+  set_fact:
+    target_namespace: "{{ first_row['Target Namespace'] }}"
+    target_storage: "{{ first_row['Target Storage'] }}"
+    network_map_name: "netmap-{{ plan_name }}"
+    storage_map_name: "storagemap-{{ plan_name }}"
+
+# Ensure the target namespace exists before proceeding
+- name: Ensure target namespace exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ target_namespace }}"
+
+##################################################################
+## STEP 1: Create NetworkMap
+##################################################################
+- name: Create NetworkMap
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: forklift.konveyor.io/v1beta1
+      kind: NetworkMap
+      metadata:
+        name: "{{ network_map_name }}"
+        namespace: "{{ target_namespace }}"
+      spec:
+        provider:
+          source:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Provider
+            name: "{{ source_provider_name }}"
+            namespace: openshift-mtv
+          destination:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Provider
+            name: "{{ destination_provider_name }}"
+            namespace: openshift-mtv
+        map:
+          - destination:
+              name: "{{ target_networkmap }}"
+              namespace: "{{ target_network_namespace }}"
+              type: multus
+            source:
+              id: "{{ source_networkmap_id }}"
+
+##################################################################
+## STEP 2: Create StorageMap
+##################################################################
+- name: Create StorageMap
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: forklift.konveyor.io/v1beta1
+      kind: StorageMap
+      metadata:
+        name: "{{ storage_map_name }}"
+        namespace: "{{ target_namespace }}"
+      spec:
+        provider:
+          source:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Provider
+            name: "{{ source_provider_name }}"
+            namespace: openshift-mtv
+          destination:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Provider
+            name: "{{ destination_provider_name }}"
+            namespace: openshift-mtv
+        map:
+          - source:
+              type: vmware
+              name: "{{ source_storagemap }}"
+            destination:
+              storageClass: "{{ target_storage }}"
+
+##################################################################
+## STEP 3: Create Migration Plan
+##################################################################
+- name: Create Migration Plan
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: forklift.konveyor.io/v1beta1
+      kind: Plan
+      metadata:
+        name: "{{ plan_name }}"
+        namespace: "{{ target_namespace }}"
+      spec:
+        provider:
+          source:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Provider
+            name: "{{ source_provider_name }}"
+            namespace: openshift-mtv
+          destination:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Provider
+            name: "{{ destination_provider_name }}"
+            namespace: openshift-mtv
+        map:
+          network:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: NetworkMap
+            name: "{{ network_map_name }}"
+            namespace: "{{ target_namespace }}"
+          storage:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: StorageMap
+            name: "{{ storage_map_name }}"
+            namespace: "{{ target_namespace }}"
+        namespace: "{{ target_namespace }}"
+        targetNamespace: "{{ target_namespace }}"
+        vms: "{{ vm_list }}"
+        warm: true
+        preserveStaticIPs: true
+# STEP 4: Patch ownerReferences on NetworkMap and StorageMap
+- name: Patch OwnerReferences
+  include_tasks: patch_owner_references.yaml
