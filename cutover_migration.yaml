@@ -1,10 +1,10 @@
 ---
 - name: Perform Cutover for a Migration Plan if Sync Completed
   hosts: localhost
-  gather_facts: false
+  gather_facts: true
   vars:
-    #plan_name: "plan-abc"                # Pass this via survey or extra vars
-    plan_namespace: "openshift-mtv"      # Namespace where the plan actually exists
+    # plan_name: "plan-abc"             # Provide via survey or extra vars
+    plan_namespace: "openshift-mtv"     # Namespace where the plan actually exists
 
   tasks:
 
@@ -59,7 +59,7 @@
             plan:
               name: "{{ plan_name }}"
               namespace: "{{ plan_namespace }}"
-            cutover: true
+            cutover: "{{ ansible_date_time.iso8601 }}"
       when: ready_for_cutover | default(false)
 
     - name: Skip cutover if not ready
