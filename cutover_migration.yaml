@@ -4,7 +4,7 @@
   gather_facts: false
 
   vars:
-    cutover_namespace: "{{ mtv_namespace }}"
+    cutover_namespace: "mtv_namespace"
     plan_names_list: "{{ plan_names.split(',') | map('trim') | list }}"
     vm_name: rhel-9
     disktransfer_total_mb: 30720
