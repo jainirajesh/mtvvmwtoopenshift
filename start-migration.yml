@@ -8,7 +8,7 @@
   tasks:
     - name: Read Migration Plan Namespace Mapping from CSV
       community.general.read_csv:
-        path: r_vm_list_to_migrate.csv.csv
+        path: r_vm_list_to_migrate.csv
       register: migration_data
 
     - name: Set filtered plans
