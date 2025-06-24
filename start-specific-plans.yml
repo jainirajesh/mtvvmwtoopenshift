@@ -6,7 +6,7 @@
   vars:
     csv_file: "vm_list_to_migrate.csv"
     mtv_namespace: "openshift-mtv"
-    user_input_plan_names: "{{ plan_names | default('') }}"  # Survey input
+    user_input_plan_names: "{{ plan_names | default('') }}"
 
   tasks:
     - name: Read CSV content (base64)
@@ -45,19 +45,55 @@
             | unique
           }}
 
-    - name: Start only selected Migration Plans
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: forklift.konveyor.io/v1beta1
-          kind: Migration
-          metadata:
-            generateName: "{{ item }}-"
-            namespace: "{{ mtv_namespace }}"
-          spec:
-            plan:
-              name: "{{ item }}"
-              namespace: "{{ mtv_namespace }}"
+    - name: Start and track Migration for each plan
+      vars:
+        plan_name: "{{ item }}"
+      block:
+        - name: Trigger migration CR with generateName
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: forklift.konveyor.io/v1beta1
+              kind: Migration
+              metadata:
+                generateName: "{{ plan_name }}-migration-"
+                namespace: "{{ mtv_namespace }}"
+              spec:
+                plan:
+                  name: "{{ plan_name }}"
+                  namespace: "{{ mtv_namespace }}"
+          register: trigger_result
+
+        - name: Wait for Migration CR to be available
+          retries: 10
+          delay: 5
+          until: migration_object.resources | selectattr('spec.plan.name', 'equalto', plan_name) | list | length > 0
+          block:
+            - name: Get list of Migration CRs
+              kubernetes.core.k8s_info:
+                api_version: forklift.konveyor.io/v1beta1
+                kind: Migration
+                namespace: "{{ mtv_namespace }}"
+              register: migration_object
+
+        - name: Capture real migration CR name
+          set_fact:
+            real_migration_name: >-
+              {{
+                migration_object.resources
+                | selectattr('spec.plan.name', 'equalto', plan_name)
+                | sort(attribute='metadata.creationTimestamp', reverse=true)
+                | map(attribute='metadata.name')
+                | first
+              }}
+
+        - name: Wait for backend and UI to register the migration
+          pause:
+            seconds: 15
+
+        - name: Show final migration CR name
+          debug:
+            msg: "Migration triggered for Plan '{{ plan_name }}' → Migration Name: {{ real_migration_name }}"
       loop: "{{ plans_to_start }}"
       loop_control:
         label: "{{ item }}"
