@@ -6,7 +6,7 @@
       apiVersion: forklift.konveyor.io/v1beta1
       kind: Migration
       metadata:
-        generateName: "{{ plan_name }}-migration-"
+        generateName: "{{ plan_name }}-"
         namespace: "{{ mtv_namespace }}"
       spec:
         plan:
