@@ -1,11 +1,10 @@
 ---
-- name: Start Migration Plans for Warm VMs from CSV
+- name: Start Multiple Migration Plans from CSV
   hosts: localhost
   gather_facts: false
 
   vars:
     csv_file: "r_vm_list_to_migrate.csv"
-    mtv_namespace: "openshift-mtv"
 
   tasks:
     - name: Read CSV content (base64)
@@ -29,7 +28,15 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Start Migration Plan for each row's Plan Name if Warm
+    - name: Build unique plan list (Plan Name + Target Namespace)
+      set_fact:
+        unique_plans: "{{ unique_plans | default([]) + [ {'Plan Name': item['Plan Name'], 'Target Namespace': item['Target Namespace']} ] }}"
+      loop: "{{ all_rows }}"
+      when: item['Plan Name'] not in (unique_plans | default([]) | map(attribute='Plan Name') | list)
+      loop_control:
+        label: "{{ item['Plan Name'] }}"
+
+    - name: Start Migration Plan for all cold
       kubernetes.core.k8s:
         state: present
         definition:
@@ -37,12 +44,12 @@
           kind: Migration
           metadata:
             generateName: "{{ item['Plan Name'] }}-migration-"
-            namespace: "{{ mtv_namespace }}"
+            namespace: "{{ item['Target Namespace'] }}"
           spec:
             plan:
               name: "{{ item['Plan Name'] }}"
-              namespace: "{{ mtv_namespace }}"
-      loop: "{{ all_rows }}"
+              namespace: "{{ item['Target Namespace'] }}"
+      loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
       when: 
