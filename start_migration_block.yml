@@ -14,19 +14,18 @@
           namespace: "{{ mtv_namespace }}"
   register: trigger_result
 
-- name: Wait for Migration CR to be available
+- name: Wait for Migration CR to appear
+  kubernetes.core.k8s_info:
+    api_version: forklift.konveyor.io/v1beta1
+    kind: Migration
+    namespace: "{{ mtv_namespace }}"
+  register: migration_object
   retries: 10
   delay: 5
-  until: migration_object.resources | selectattr('spec.plan.name', 'equalto', plan_name) | list | length > 0
-  block:
-    - name: Get list of Migration CRs
-      kubernetes.core.k8s_info:
-        api_version: forklift.konveyor.io/v1beta1
-        kind: Migration
-        namespace: "{{ mtv_namespace }}"
-      register: migration_object
+  until: >
+    migration_object.resources | selectattr('spec.plan.name', 'equalto', plan_name) | list | length > 0
 
-- name: Capture real migration CR name
+- name: Capture most recent migration CR name
   set_fact:
     real_migration_name: >-
       {{
@@ -37,9 +36,9 @@
         | first
       }}
 
-- name: Wait for backend and UI to register the migration
+- name: Wait a few seconds for status propagation
   pause:
-    seconds: 15
+    seconds: 10
 
 - name: Show final migration CR name
   debug:
