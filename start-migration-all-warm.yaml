@@ -1,0 +1,50 @@
+---
+- name: Start Migration Plans for Warm VMs from CSV
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    csv_file: "vm_list_to_migrate.csv"
+    mtv_namespace: "openshift-mtv"
+
+  tasks:
+    - name: Read CSV content (base64)
+      slurp:
+        src: "{{ csv_file }}"
+      register: raw_csv
+
+    - name: Decode and split CSV into lines
+      set_fact:
+        csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
+
+    - name: Extract CSV headers
+      set_fact:
+        csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
+
+    - name: Parse each row into a dictionary
+      set_fact:
+        all_rows: "{{ all_rows | default([]) + [dict(csv_headers | zip(row.split(',') | map('trim') | list))] }}"
+      loop: "{{ csv_lines[1:] }}"
+      loop_control:
+        loop_var: row
+      when: row.strip() != ''
+
+    - name: Start Migration Plan for each row's Plan Name if Warm
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: forklift.konveyor.io/v1beta1
+          kind: Migration
+          metadata:
+            generateName: "{{ item['Plan Name'] }}-migration-"
+            namespace: "{{ mtv_namespace }}"
+          spec:
+            plan:
+              name: "{{ item['Plan Name'] }}"
+              namespace: "{{ mtv_namespace }}"
+      loop: "{{ all_rows }}"
+      loop_control:
+        label: "{{ item['Plan Name'] }}"
+      when: 
+        - (item['Cold or Warm'] | lower == 'warm' or item['Cold or Warm'] == 'WARM')
+        - item['Plan Name'] is defined and item['Plan Name'] != ''
