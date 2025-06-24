@@ -1,2 +1,2 @@
 Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS,Plan Name,Target Namespace,Target Storage,Cold or Warm,Keep IP 
-3,linux-1,vm-31039,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),splan-04,ns-a,lvms-vg1,warm,yes 
+3,linux-1,vm-31039,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),splan-06,ns-a,lvms-vg1,warm,yes 
