@@ -59,8 +59,7 @@
             plan:
               name: "{{ plan_name }}"
               namespace: "{{ plan_namespace }}"
-            #cutover: "{{ ansible_date_time.iso8601 }}"
-            cutover: "{{ '%Y-%m-%dT%H:%M:%SZ' | strftime(ansible_date_time.epoch | int + 180) }}"
+            cutover: "{{ '%Y-%m-%dT%H:%M:%SZ' | strftime(ansible_date_time.epoch | int + 180) }}"  # 3-min buffer
       when: ready_for_cutover | default(false)
 
     - name: Skip cutover if not ready
