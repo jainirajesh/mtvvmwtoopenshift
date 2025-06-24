@@ -52,7 +52,7 @@
           apiVersion: forklift.konveyor.io/v1beta1
           kind: Migration
           metadata:
-            generateName: "{{ item }}-migration-"
+            generateName: "{{ item }}-"
             namespace: "{{ mtv_namespace }}"
           spec:
             plan:
