@@ -3,11 +3,10 @@
   hosts: localhost
   gather_facts: true
   vars:
-    # plan_name: "plan-abc"             # Provide via survey or extra vars
-    plan_namespace: "openshift-mtv"     # Namespace where the plan actually exists
+    plan_namespace: "openshift-mtv"  # Namespace where the plan exists
+    # plan_name: "splan-04"          # Pass this via extra-vars or survey
 
   tasks:
-
     - name: Get latest migration for the plan
       kubernetes.core.k8s_info:
         api_version: forklift.konveyor.io/v1beta1
@@ -46,6 +45,11 @@
       debug:
         msg: "Migration '{{ plan_name }}' is ready for cutover: {{ ready_for_cutover | default(false) }}"
 
+    - name: Calculate cutover timestamp with 3-min buffer
+      set_fact:
+        cutover_timestamp: "{{ '%Y-%m-%dT%H:%M:%SZ' | strftime(ansible_date_time.epoch | int + 180) }}"
+      when: ready_for_cutover | default(false)
+
     - name: Perform Cutover if ready
       kubernetes.core.k8s:
         state: present
@@ -59,7 +63,7 @@
             plan:
               name: "{{ plan_name }}"
               namespace: "{{ plan_namespace }}"
-            cutover: "{{ '%Y-%m-%dT%H:%M:%SZ' | strftime(ansible_date_time.epoch | int + 180) }}"  # 3-min buffer
+            cutover: "{{ cutover_timestamp }}"
       when: ready_for_cutover | default(false)
 
     - name: Skip cutover if not ready
