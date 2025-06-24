@@ -2,3 +2,6 @@ Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS
 1,win-1,vm-31040,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),win230601,winns01,lvms-vg1,warm,yes 
 2,linux-1,vm-31039,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),linux230601,linuxns01,lvms-vg1,warm,yes
 3,rhel-8-clone,vm-30822,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),rhel230601,rhelns01,lvms-vg1,cold,yes
+4,win-1,vm-31040,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),win240601,winns01,lvms-vg1,warm,yes 
+5,linux-1,vm-31039,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),linux240601,linuxns01,lvms-vg1,warm,yes
+6,rhel-8-clone,vm-30822,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),rhel240601,rhelns01,lvms-vg1,cold,yes
