@@ -30,7 +30,7 @@
 
     - name: Build unique plan list (Plan Name + Target Namespace)
       set_fact:
-        unique_plans: "{{ unique_plans | default([]) + [ {'Plan Name': item['Plan Name'], 'Target Namespace': item['Target Namespace']} ], 'Cold or Warm': item['Cold or Warm']} ] }}"
+        unique_plans: "{{ unique_plans | default([]) + [ {'Plan Name': item['Plan Name'], 'Target Namespace': item['Target Namespace'], 'Cold or Warm': item['Cold or Warm']} ] }}"
       loop: "{{ all_rows }}"
       when: item['Plan Name'] not in (unique_plans | default([]) | map(attribute='Plan Name') | list)
       loop_control:
