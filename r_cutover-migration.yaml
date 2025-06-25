@@ -53,8 +53,6 @@
       loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
-      environment:
-        KUBECONFIG: /tmp/kubeconfig
       when: 
         - (item['Cold or Warm'] | lower == 'warm')
         - item['Plan Name'] is defined and item['Plan Name'] != ''
