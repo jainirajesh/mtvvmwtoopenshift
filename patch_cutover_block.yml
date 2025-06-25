@@ -1,5 +1,5 @@
 ---
-- name: Find all migrations matching Plan '{{ plan_name }}'
+- name: Set matching migrations for {{ plan_name }}
   set_fact:
     matching_migrations: >-
       {{
@@ -8,17 +8,16 @@
         | sort(attribute='metadata.creationTimestamp', reverse=True)
       }}
 
-- name: Set latest migration for Plan '{{ plan_name }}'
-  set_fact:
-    latest_migration: "{{ matching_migrations[0] }}"
-  when: matching_migrations | length > 0
-
-- name: Fail if no migration found for Plan {{ plan_name }}
+- name: Check if matching migration exists for {{ plan_name }}
   fail:
-    msg: "No migration found for plan {{ plan_name }}"
+    msg: "❌ No migration found for plan '{{ plan_name }}'. Please check if sync has been run."
   when: matching_migrations | length == 0
 
-- name: Patch migration {{ latest_migration.metadata.name }} with cutover time
+- name: Set latest migration object for {{ plan_name }}
+  set_fact:
+    latest_migration: "{{ matching_migrations[0] }}"
+
+- name: Patch cutover time on latest migration {{ latest_migration.metadata.name }}
   kubernetes.core.k8s_json_patch:
     kind: Migration
     api_version: forklift.konveyor.io/v1beta1
@@ -29,6 +28,6 @@
         path: /spec/cutover
         value: "{{ cutover_time }}"
 
-- name: Show success message for Plan '{{ plan_name }}'
+- name: ✅ Patched cutover on migration for {{ plan_name }}
   debug:
-    msg: "✅ Cutover applied to migration '{{ latest_migration.metadata.name }}' for plan '{{ plan_name }}'"
+    msg: "Cutover patch applied on Migration '{{ latest_migration.metadata.name }}' for Plan '{{ plan_name }}'"
