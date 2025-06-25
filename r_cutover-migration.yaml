@@ -7,6 +7,7 @@
     csv_file: "r_vm_list_to_migrate.csv"
 
   tasks:
+
     - name: Read CSV content (base64)
       slurp:
         src: "{{ csv_file }}"
@@ -36,7 +37,7 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Cutover migration using oc CLI
+    - name: Start cutover migrations using oc CLI (warm plans only)
       shell: |
         oc create -f - <<EOF
         apiVersion: forklift.konveyor.io/v1beta1
@@ -52,6 +53,8 @@
       loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
+      environment:
+        KUBECONFIG: /tmp/kubeconfig
       when: 
-        - (item['Cold or Warm'] | lower == 'warm' or item['Cold or Warm'] == 'WARM')
+        - (item['Cold or Warm'] | lower == 'warm')
         - item['Plan Name'] is defined and item['Plan Name'] != ''
