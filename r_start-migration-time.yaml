@@ -34,31 +34,28 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Poll and wait until sync time reached per plan
-      command: date -u +%Y-%m-%dT%H:%M:%S
-      register: current_time_cmd
-      until: (current_time_cmd.stdout | to_datetime('%Y-%m-%dT%H:%M:%S')) >= (item['Sync Time'] | to_datetime('%Y-%m-%d %H:%M:%S'))
-      retries: 10000
-      delay: 60
-      loop: "{{ unique_plans }}"
-      loop_control:
-        label: "{{ item['Plan Name'] }}"
-      when: item['Sync Time'] is defined and item['Sync Time'] != ''
+    - name: Poll and start migration plan once sync time reached
+      block:
+        - name: Poll until sync time reached
+          command: date -u +%Y-%m-%dT%H:%M:%S
+          register: current_time_cmd
+          until: (current_time_cmd.stdout | to_datetime('%Y-%m-%dT%H:%M:%S')) >= (item['Sync Time'] | to_datetime('%Y-%m-%d %H:%M:%S'))
+          retries: 10000
+          delay: 60
 
-
-    - name: Start Migration Plan for each unique Plan Name and Namespace
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: forklift.konveyor.io/v1beta1
-          kind: Migration
-          metadata:
-            generateName: "{{ item['Plan Name'] }}-migration-"
-            namespace: "{{ item['Target Namespace'] }}"
-          spec:
-            plan:
-              name: "{{ item['Plan Name'] }}"
-              namespace: "{{ item['Target Namespace'] }}"
+        - name: Start Migration Plan after sync time reached
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: forklift.konveyor.io/v1beta1
+              kind: Migration
+              metadata:
+                generateName: "{{ item['Plan Name'] }}-migration-"
+                namespace: "{{ item['Target Namespace'] }}"
+              spec:
+                plan:
+                  name: "{{ item['Plan Name'] }}"
+                  namespace: "{{ item['Target Namespace'] }}"
       loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
