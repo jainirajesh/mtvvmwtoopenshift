@@ -37,22 +37,11 @@
     - name: Poll and wait until sync time reached per plan
       vars:
         target_time: "{{ item['Sync Time'] | to_datetime('%Y-%m-%d %H:%M:%S') }}"
-        current_time: ""
-      until: current_time >= target_time
+      command: date -u +%Y-%m-%dT%H:%M:%S
+      register: current_time_cmd
+      until: (current_time_cmd.stdout | to_datetime('%Y-%m-%dT%H:%M:%S')) >= target_time
       retries: 10000       # max retries (~ 10000 * delay seconds)
-      delay: 60           # wait 60 seconds between checks
-      block:
-        - name: Get current UTC time
-          command: date -u +%Y-%m-%dT%H:%M:%S
-          register: current_time_cmd
-
-        - name: Set current time fact
-          set_fact:
-            current_time: "{{ current_time_cmd.stdout | to_datetime('%Y-%m-%dT%H:%M:%S') }}"
-
-        - name: Show polling status
-          debug:
-            msg: "Waiting to start '{{ item['Plan Name'] }}' migration. Current time: {{ current_time }} Target time: {{ target_time }}"
+      delay: 60            # wait 60 seconds between checks
       loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
