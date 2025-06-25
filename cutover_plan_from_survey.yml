@@ -5,7 +5,7 @@
 
   vars:
     mtv_namespace: "openshift-mtv"
-    user_input_plan_names: "{{ cutover_plan_name | default('') }}"
+    user_input_plan_names: "{{ plan_name | default('') }}"
     plan_names: "{{ user_input_plan_names.split(',') | map('trim') | list }}"
 
   tasks:
@@ -20,36 +20,8 @@
       set_fact:
         cutover_time: "{{ lookup('pipe', 'date -u -d \"+60 seconds\" +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
 
-    - name: Loop over plan names to patch latest migration for each
-      vars:
-        matching_migrations: >-
-          {{
-            all_migrations.resources
-            | selectattr('spec.plan.name', 'equalto', item)
-            | sort(attribute='metadata.creationTimestamp', reverse=True)
-          }}
-        latest_migration: "{{ matching_migrations[0] if matching_migrations | length > 0 else {} }}"
-      block:
-        - name: Check if migration found for plan {{ item }}
-          fail:
-            msg: "No migration found for plan {{ item }}"
-          when: latest_migration == {}
-
-        - name: Patch latest migration with cutover time for plan {{ item }}
-          kubernetes.core.k8s_json_patch:
-            kind: Migration
-            api_version: forklift.konveyor.io/v1beta1
-            name: "{{ latest_migration.metadata.name }}"
-            namespace: "{{ mtv_namespace }}"
-            patch:
-              - op: add
-                path: /spec/cutover
-                value: "{{ cutover_time }}"
-
-        - name: Show success message for {{ item }}
-          debug:
-            msg: "Cutover patched for migration '{{ latest_migration.metadata.name }}' (Plan: {{ item }})"
-
+    - name: Patch latest migration with cutover time using include_tasks
+      include_tasks: patch_cutover_block.yml
       loop: "{{ plan_names }}"
       loop_control:
-        label: "{{ item }}"
+        loop_var: plan_name
