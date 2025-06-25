@@ -1,6 +1,6 @@
-- name: Start Multiple Migration Plans from CSV based on sync time
+- name: Start Multiple Migration Plans from CSV based on sync time (with polling)
   hosts: localhost
-  gather_facts: true
+  gather_facts: false
   vars:
     csv_file: "r_vm_list_to_migrate.csv"
 
@@ -34,33 +34,29 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Calculate time difference in seconds for waiting per unique plan
-      set_fact:
-        unique_plans_with_diff: >-
-          {{
-            unique_plans_with_diff | default([]) + [
-              item | combine({
-                'time_difference_seconds': (
-                  (
-                    (item['Sync Time'] | to_datetime('%Y-%m-%d %H:%M:%S'))
-                    - (ansible_date_time.iso8601[:-1] | to_datetime('%Y-%m-%dT%H:%M:%S'))
-                  ).total_seconds() | int
-                )
-              })
-            ]
-          }}
+    - name: Poll and wait until sync time reached per plan
+      vars:
+        target_time: "{{ item['Sync Time'] | to_datetime('%Y-%m-%d %H:%M:%S') }}"
+        current_time: ""
+      until: current_time >= target_time
+      retries: 10000       # max retries (~ 10000 * delay seconds)
+      delay: 60           # wait 60 seconds between checks
+      block:
+        - name: Get current UTC time
+          command: date -u +%Y-%m-%dT%H:%M:%S
+          register: current_time_cmd
+
+        - name: Set current time fact
+          set_fact:
+            current_time: "{{ current_time_cmd.stdout | to_datetime('%Y-%m-%dT%H:%M:%S') }}"
+
+        - name: Show polling status
+          debug:
+            msg: "Waiting to start '{{ item['Plan Name'] }}' migration. Current time: {{ current_time }} Target time: {{ target_time }}"
       loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
       when: item['Sync Time'] is defined and item['Sync Time'] != ''
-
-    - name: Wait for the sync time (if sync time is in the future)
-      pause:
-        seconds: "{{ item.time_difference_seconds }}"
-      loop: "{{ unique_plans_with_diff }}"
-      loop_control:
-        label: "{{ item['Plan Name'] }}"
-      when: item.time_difference_seconds > 0
 
     - name: Start Migration Plan for each unique Plan Name and Namespace
       kubernetes.core.k8s:
@@ -75,10 +71,10 @@
             plan:
               name: "{{ item['Plan Name'] }}"
               namespace: "{{ item['Target Namespace'] }}"
-      loop: "{{ unique_plans_with_diff }}"
+      loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
       when:
-        - (item['Cold or Warm'] | lower == 'warm')
+        - (item['Cold or Warm'] | lower == 'warm' or item['Cold or Warm'] == 'WARM')
         - item['Plan Name'] is defined and item['Plan Name'] != ''
         - item['Sync Time'] is defined and item['Sync Time'] != ''
