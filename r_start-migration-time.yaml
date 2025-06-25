@@ -1,4 +1,3 @@
----
 - name: Start Multiple Migration Plans from CSV based on sync time
   hosts: localhost
   gather_facts: true
@@ -35,9 +34,21 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Calculate time difference in seconds for waiting
+    - name: Calculate time difference in seconds for waiting per unique plan
       set_fact:
-        time_difference_seconds: "{{ ((item['Sync Time'] | to_datetime('%Y-%m-%d %H:%M:%S')) - (ansible_date_time.iso8601 | to_datetime('%Y-%m-%dT%H:%M:%S'))) | to_datetime('%s') }}"
+        unique_plans_with_diff: >-
+          {{
+            unique_plans_with_diff | default([]) + [
+              item | combine({
+                'time_difference_seconds': (
+                  (
+                    (item['Sync Time'] | to_datetime('%Y-%m-%d %H:%M:%S'))
+                    - (ansible_date_time.iso8601[:-1] | to_datetime('%Y-%m-%dT%H:%M:%S'))
+                  ).total_seconds() | int
+                )
+              })
+            ]
+          }}
       loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
@@ -45,11 +56,11 @@
 
     - name: Wait for the sync time (if sync time is in the future)
       pause:
-        seconds: "{{ time_difference_seconds }}"
-      loop: "{{ unique_plans }}"
+        seconds: "{{ item.time_difference_seconds }}"
+      loop: "{{ unique_plans_with_diff }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
-      when: time_difference_seconds > 0
+      when: item.time_difference_seconds > 0
 
     - name: Start Migration Plan for each unique Plan Name and Namespace
       kubernetes.core.k8s:
@@ -64,10 +75,10 @@
             plan:
               name: "{{ item['Plan Name'] }}"
               namespace: "{{ item['Target Namespace'] }}"
-      loop: "{{ unique_plans }}"
+      loop: "{{ unique_plans_with_diff }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
       when:
-        - (item['Cold or Warm'] | lower == 'warm' or item['Cold or Warm'] == 'WARM')
+        - (item['Cold or Warm'] | lower == 'warm')
         - item['Plan Name'] is defined and item['Plan Name'] != ''
         - item['Sync Time'] is defined and item['Sync Time'] != ''
