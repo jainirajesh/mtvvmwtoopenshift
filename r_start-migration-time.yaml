@@ -35,13 +35,21 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Wait for the sync time
-      pause:
-        seconds: "{{ ((item['Sync Time'] | to_datetime('%Y-%m-%d %H:%M:%S') - ansible_date_time.iso8601 | to_datetime('%Y-%m-%dT%H:%M:%S')) | to_seconds) }}"
+    - name: Calculate time difference in seconds for waiting
+      set_fact:
+        time_difference_seconds: "{{ ((item['Sync Time'] | to_datetime('%Y-%m-%d %H:%M:%S')) - (ansible_date_time.iso8601 | to_datetime('%Y-%m-%dT%H:%M:%S'))) | to_datetime('%s') }}"
       loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
       when: item['Sync Time'] is defined and item['Sync Time'] != ''
+
+    - name: Wait for the sync time (if sync time is in the future)
+      pause:
+        seconds: "{{ time_difference_seconds }}"
+      loop: "{{ unique_plans }}"
+      loop_control:
+        label: "{{ item['Plan Name'] }}"
+      when: time_difference_seconds > 0
 
     - name: Start Migration Plan for each unique Plan Name and Namespace
       kubernetes.core.k8s:
@@ -59,7 +67,7 @@
       loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
-      when: 
+      when:
         - (item['Cold or Warm'] | lower == 'warm' or item['Cold or Warm'] == 'WARM')
         - item['Plan Name'] is defined and item['Plan Name'] != ''
         - item['Sync Time'] is defined and item['Sync Time'] != ''
