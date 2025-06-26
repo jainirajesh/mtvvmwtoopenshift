@@ -1,4 +1,5 @@
-- name: Create cold migration plans from CSV
+---
+- name: Create COLD migration plans from CSV
   hosts: localhost
   gather_facts: false
 
@@ -19,43 +20,44 @@
       set_fact:
         csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
 
-    - name: Parse and filter cold plans
+    - name: Parse each row into a dictionary
       set_fact:
-        cold_rows: >-
-          {{
-            csv_lines[1:]
-            | map('trim')
-            | reject('equalto', '')
-            | map('split', ',')
-            | map('map', 'trim')
-            | map('list')
-            | map('zip', csv_headers)
-            | map('dict')
-            | selectattr('Cold or Warm', 'equalto', 'cold')
-            | list
-          }}
+        all_rows: "{{ all_rows | default([]) + [dict(csv_headers | zip(row.split(',') | map('trim') | list))] }}"
+      loop: "{{ csv_lines[1:] }}"
+      loop_control:
+        loop_var: row
+      when: row.strip() != ''
+
+    - name: Filter only cold rows
+      set_fact:
+        cold_rows: "{{ all_rows | selectattr('Cold or Warm', 'equalto', 'cold') | list }}"
 
     - name: Group cold VMs by Plan Name
       set_fact:
-        cold_plans_dict: "{{ cold_plans_dict | default({}) | combine({ item['Plan Name']: (cold_plans_dict[item['Plan Name']] | default([])) + [item] }) }}"
-      loop: "{{ cold_rows }}"
-      loop_control:
-        label: "{{ item['Plan Name'] }}"
+        cold_plans_dict: "{{ cold_rows | groupby('Plan Name') | items2dict(key_name=0, value_name=1) }}"
 
-    - name: Prepare data for cold plans
+    - name: Format cold plans structure with vms and rows
       set_fact:
-        cold_plans_with_vms: "{{ cold_plans_with_vms | default({}) | combine({ item.key: { 'vms': vm_list, 'rows': item.value, 'is_warm': false } }) }}"
-      vars:
-        vm_list: >-
-          {% set result = [] %}
-          {% for row in item.value %}
-          {% set _ = result.append({ 'name': row['RHOS Name'], 'id': row['VM ID'] }) %}
-          {% endfor %}
-          {{ result }}
-      loop: "{{ cold_plans_dict | dict2items }}"
+        plans_with_vms: >-
+          {{
+            cold_plans_dict
+            | dict2items
+            | map('combine', {
+                'key': item.key,
+                'value': {
+                  'rows': item.value,
+                  'vms': item.value
+                         | map('extract', ['RHOS Name', 'VM ID'])
+                         | map('community.general.dict_kv', 'name', 'id')
+                         | list,
+                  'is_warm': false
+                }
+              })
+            | list
+          }}
 
-    - name: Create cold plans
+    - name: Loop over each cold plan group and create them
       include_tasks: create_single_plan.yaml
-      loop: "{{ cold_plans_with_vms | dict2items }}"
+      loop: "{{ plans_with_vms }}"
       loop_control:
         loop_var: plan_group
