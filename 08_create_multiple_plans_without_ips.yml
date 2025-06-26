@@ -55,7 +55,7 @@
         ansible_python_interpreter: "{{ ansible_playbook_python }}"
 
     - name: Loop over each plan group and create plans
-      include_tasks: create_single_plan.yaml
+      include_tasks: 07_create_plan_only_without_ips.yml
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: plan_group
