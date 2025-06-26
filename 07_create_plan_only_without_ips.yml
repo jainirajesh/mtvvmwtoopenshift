@@ -1,4 +1,3 @@
----
 - name: Create NetworkMap
   kubernetes.core.k8s:
     state: present
@@ -95,9 +94,9 @@
             namespace: "{{ mtv_namespace }}"
         targetNamespace: "{{ plan_group.value.rows[0]['Target Namespace'] }}"
         pvcNameTemplateUseGenerateName: true
-        preserveStaticIPs: false         # ✅ Hardcoded as per requirement
+        preserveStaticIPs: false
         migrateSharedDisks: true
-        warm: "{{ plan_group.value.is_warm }}"
+        warm: false
         vms: "{{ plan_group.value.vms }}"
 
 - name: Wait until Plan is Ready
