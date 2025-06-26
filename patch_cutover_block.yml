@@ -28,11 +28,10 @@
   delay: 5
   until: >-
     (
-      latest_migration_status.resources | map(attribute='status.migration.vms')
-      | flatten
+      latest_migration_status.resources | map(attribute='status') | map(attribute='migration') | select('defined')
+      | map(attribute='vms') | flatten
       | selectattr('phase', 'equalto', 'CopyingPaused')
-      | list
-      | length
+      | list | length
     ) > 0
   when: latest_migration is defined
 
