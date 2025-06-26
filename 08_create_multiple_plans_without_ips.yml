@@ -49,38 +49,29 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Build final plan objects without preserved IP
+    - name: Initialize plans_with_vms
       set_fact:
-        plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: { 'rows': item.value, 'vms': [] } }) }}"
-      loop: "{{ plans_dict | dict2items }}"
-      loop_control:
-        label: "{{ item.key }}"
+        plans_with_vms: {}
 
     - name: Append each VM to corresponding plan.vms
       set_fact:
         plans_with_vms: >-
           {{
             plans_with_vms | combine({
-              plan.key: {
-                'rows': plans_with_vms[plan.key].rows,
-                'vms': plans_with_vms[plan.key].vms + [{
-                  'name': vm['RHOS Name'],
-                  'id': vm['VM ID']
-                }]
+              item['Plan Name']: {
+                'rows': (plans_with_vms[item['Plan Name']].rows | default([])) + [item],
+                'vms': (plans_with_vms[item['Plan Name']].vms | default([])) + [
+                  {
+                    'name': item['RHOS Name'],
+                    'id': item['VM ID']
+                  }
+                ]
               }
-            })
+            }, recursive=True)
           }}
-      loop: "{{ plans_dict | dict2items }}"
+      loop: "{{ no_ip_rows }}"
       loop_control:
-        loop_var: plan
-      vars:
-        vms: "{{ plan.value }}"
-        dummy: "{{ vms | map('extract', ['RHOS Name', 'VM ID']) | list }}"
-      with_nested:
-        - "{{ plans_dict | dict2items }}"
-        - "{{ item.value }}"
-      loop_control:
-        loop_var: vm
+        label: "{{ item['Plan Name'] }}"
 
     - name: Loop over each plan group and create plans without preserved IPs
       include_tasks: 07_create_plan_only_without_ips.yml
