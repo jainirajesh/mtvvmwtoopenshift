@@ -1,4 +1,10 @@
 Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS,Plan Name,Target Namespace,Target Storage,Cold or Warm,Keep IP,Sync Time 
-1,win-1,vm-31040,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),rwin2506011,winns01,lvms-vg1,warm,yes,2025-06-25 11:15:00
-2,linux-1,vm-31039,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),rlinux2506011,linuxns01,lvms-vg1,warm,yes,2025-06-25 11:20:00
-3,rhel-8-clone,vm-30822,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),rrhel2506011,rhelns01,lvms-vg1,cold,yes,2025-06-25 11:22:00
+1,linux-demo-01,vm-31433,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),lin-plan-01,linux-ns,lvms-vg1,warm,yes,2025-06-26 10:15:00
+2,linux-demo-02,vm-31441,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),lin-plan-01,linux-ns,lvms-vg1,warm,yes,2025-06-26 10:16:00
+3,linux-demo-03,vm-31442,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),lin-plan-02,linux-ns,lvms-vg1,warm,yes,2025-06-26 10:17:00
+4,win-demo-01,vm-31434,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-01,win-ns,lvms-vg1,warm,yes,2025-06-26 10:18:00
+5,win-demo-02,vm-31438,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-02,win-ns,lvms-vg1,warm,yes,2025-06-26 10:19:00
+6,win-demo-03,vm-31440,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-02,win-ns,lvms-vg1,warm,yes,2025-06-26 10:20:00
+7,win-1,vm-31040,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),rwin2506011,win-plan-03,lvms-vg1,warm,yes,2025-06-26 10:20:00
+8,linux-1,vm-31039,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),rlinux2506011,lin-plan-03,lvms-vg1,warm,yes,2025-06-26 10:21:00
+9,rhel-8-clone,vm-30822,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),rrhel2506011,lin-plan-03,lvms-vg1,cold,yes,2025-06-26 10:22:00
