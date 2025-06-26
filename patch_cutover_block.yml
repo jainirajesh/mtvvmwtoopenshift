@@ -10,7 +10,7 @@
 
 - name: Check if matching migration exists for {{ plan_name }}
   fail:
-    msg: "❌ No migration found for plan '{{ plan_name }}'. Please check if sync has been run."
+    msg: "❌ No Migration CR found for Plan '{{ plan_name }}'. Please ensure Sync has been successfully run before Cutover."
   when: matching_migrations | length == 0
 
 - name: Set latest migration object for {{ plan_name }}
