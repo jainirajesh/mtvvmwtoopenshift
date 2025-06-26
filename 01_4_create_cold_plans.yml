@@ -54,7 +54,7 @@
         label: "{{ item.key }}"
 
     - name: Loop over cold plans and create them
-      include_tasks: create_single_plan.yaml
+      include_tasks: 01_2_create_single_plan.yml
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: plan_group
