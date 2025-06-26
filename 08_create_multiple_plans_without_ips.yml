@@ -1,4 +1,5 @@
-- name: Create multiple migration plans from CSV
+---
+- name: Create migration plans from CSV with dynamic IP preservation
   hosts: localhost
   gather_facts: false
 
@@ -34,26 +35,27 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Construct VM objects and update plans_with_vms with is_warm flag
+    - name: Format plans with warm flag and IP preservation
       set_fact:
         plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: {
-          'vms': vm_list,
-          'rows': item.value,
-          'is_warm': (item.value[0]['Cold or Warm'] | lower == 'warm')
-        } }) }}"
-      vars:
-        vm_list: >-
-          {%- set result = [] -%}
-          {%- for row in item.value -%}
-          {%-   set _ = result.append({ 'name': row['RHOS Name'], 'id': row['VM ID'] }) -%}
-          {%- endfor -%}
-          {{ result }}
+            'rows': item.value,
+            'vms': (
+              item.value |
+              map('extract', ['RHOS Name', 'VM ID']) |
+              map('community.general.dict_kv', 'name', 'id') |
+              list
+            ),
+            'is_warm': (item.value[0]['Cold or Warm'] | lower) == 'warm'
+        }}) }}"
       loop: "{{ plans_dict | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
+      vars:
+        # Ensures 'dict_kv' is available
+        ansible_python_interpreter: "{{ ansible_playbook_python }}"
 
-    - name: Loop over each plan group and create them
-      include_tasks: 07_create_single_plan_without_ips.yml
+    - name: Loop over each plan group and create plans
+      include_tasks: create_single_plan.yaml
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: plan_group
