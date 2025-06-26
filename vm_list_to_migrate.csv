@@ -4,4 +4,4 @@ Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS
 3,linux-demo-03,vm-31442,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),lin-plan-03,linux-ns,lvms-vg1,warm,yes
 4,win-demo-01,vm-31434,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-01,win-ns,lvms-vg1,warm,yes
 5,win-demo-02,vm-31438,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-02,win-ns,lvms-vg1,cold,yes
-6,win-demo-03,vm-31440,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-03,win-ns,lvms-vg1,warm,no
+6,win-demo-03,vm-31440,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-03,win-ns,lvms-vg1,cold,no
