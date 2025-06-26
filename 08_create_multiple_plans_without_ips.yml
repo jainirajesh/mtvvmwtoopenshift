@@ -1,5 +1,5 @@
 ---
-- name: Create migration plans ONLY for VMs with Keep IP = No
+- name: Create migration plans without preserved IPs
   hosts: localhost
   gather_facts: false
 
@@ -28,11 +28,11 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Filter rows with Keep IP = No
+    - name: Filter rows where Keep IP is No
       set_fact:
-        no_ip_rows: "{{ all_rows | selectattr('Keep IP', 'search', '^[Nn][Oo]$') | list }}"
+        no_ip_rows: "{{ all_rows | selectattr('Keep IP', 'lower') | select('equalto', 'no') | list }}"
 
-    - name: Group No-IP VMs by Plan Name
+    - name: Group no-IP VMs by Plan Name
       set_fact:
         plans_dict: "{{ plans_dict | default({}) | combine({ item['Plan Name']: (plans_dict[item['Plan Name']] | default([])) + [item] }) }}"
       loop: "{{ no_ip_rows }}"
@@ -41,22 +41,30 @@
 
     - name: Format plans with warm flag and no IP preservation
       set_fact:
-        plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: {
-            'rows': item.value,
-            'vms': (
-              item.value |
-              map('extract', ['RHOS Name', 'VM ID']) |
-              map('zip', ['name', 'id']) |
-              map('dict') |
-              list
-            ),
-            'is_warm': (item.value[0]['Cold or Warm'] | lower) == 'warm'
-        }}) }}"
+        plans_with_vms: >-
+          {{
+            plans_with_vms | default({}) | combine({
+              item.key: {
+                'rows': item.value,
+                'vms': (
+                  item.value |
+                  map('extract', ['RHOS Name', 'VM ID']) |
+                  map('zip', ['name', 'id']) |
+                  map('dict') |
+                  list
+                ),
+                'is_warm': (
+                  (item.value | length > 0) and 
+                  ((item.value[0]['Cold or Warm'] | lower) == 'warm')
+                )
+              }
+            })
+          }}
       loop: "{{ plans_dict | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
 
-    - name: Loop over No-IP plan groups and create
+    - name: Loop over each plan group and create plans without preserved IPs
       include_tasks: 07_create_plan_only_without_ips.yml
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
