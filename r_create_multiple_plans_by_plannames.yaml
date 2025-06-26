@@ -3,15 +3,15 @@
   gather_facts: false
 
   vars_files:
-    - vars.yaml  # if this includes `selected_plans`, otherwise define manually
+    - vars.yaml  # Optional, may include `selected_plans`
 
   vars:
-    selected_plans: "{{ selected_plans | default('') }}"  # from survey: "Plan A,Plan B"
+    selected_plans: "{{ selected_plans | default('') }}"  # Provided via AAP survey
 
   tasks:
     - name: Read CSV content (base64)
       slurp:
-        src: vm_list_to_migrate.csv
+        src: r_vm_list_to_migrate.csv
       register: raw_csv
 
     - name: Decode and split CSV into lines
@@ -51,16 +51,16 @@
       loop_control:
         label: "{{ item.key }}"
 
-    - name: Parse selected plans from survey
+    - name: Parse selected plans from survey input
       set_fact:
         selected_plan_names: "{{ selected_plans.split(',') | map('trim') | list }}"
 
-    - name: Filter plans to include only selected ones
+    - name: Filter only selected plans
       set_fact:
         filtered_plans: "{{ plans_with_vms | dict2items | selectattr('key', 'in', selected_plan_names) | list }}"
 
-    - name: Create only selected migration plans
-      include_tasks: create_single_plan.yaml
+    - name: Loop over each selected plan group and create them
+      include_tasks: r_create_single_plan.yaml
       loop: "{{ filtered_plans }}"
       loop_control:
         loop_var: plan_group
