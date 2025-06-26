@@ -28,15 +28,15 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Filter rows where Keep IP is No
+    - name: Filter rows where Keep IP is No (normalized)
       set_fact:
         no_ip_rows: >-
           {{
-            all_rows
-            | selectattr('Keep IP', 'defined')
-            | selectattr('Keep IP', 'lower') | select('equalto', 'no')
-            | list
+            all_rows | selectattr('Keep IP', 'defined') | selectattr(
+              'Keep IP', 'match', '^(?i:no)\s*$'
+            ) | list
           }}
+
 
     - name: Debug to check filtered rows (optional)
       debug:
