@@ -94,7 +94,7 @@
             namespace: "{{ mtv_namespace }}"
         targetNamespace: "{{ plan_group.value.rows[0]['Target Namespace'] }}"
         pvcNameTemplateUseGenerateName: true
-        preserveStaticIPs: false
+        preserveStaticIPs: "{{ (plan_group.value.rows[0]['Keep IP'] | lower) == 'yes' }}"
         migrateSharedDisks: true
         warm: "{{ plan_group.value.is_warm }}"
         vms: "{{ plan_group.value.vms }}"
