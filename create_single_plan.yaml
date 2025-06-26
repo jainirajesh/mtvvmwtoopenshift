@@ -96,7 +96,11 @@
         pvcNameTemplateUseGenerateName: true
         preserveStaticIPs: true
         migrateSharedDisks: true
-        warm: true
+        warm: >-
+          {{
+            (plan_group.value.is_warm is defined)
+            | ternary(plan_group.value.is_warm, plan_group.value.rows[0]['Cold or Warm'] | lower == 'warm')
+          }}
         vms: "{{ plan_group.value.vms }}"
 
 - name: Wait until Plan is Ready
