@@ -21,7 +21,7 @@
         cutover_time: "{{ lookup('pipe', 'date -u -d \"+60 seconds\" +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
 
     - name: Cutover each plan using block task
-      include_tasks: 03_1_patch_cutover_task.yml
+      include_tasks: 03_2_patch_cutover_task.yml
       loop: "{{ plan_names }}"
       loop_control:
         loop_var: plan_name
