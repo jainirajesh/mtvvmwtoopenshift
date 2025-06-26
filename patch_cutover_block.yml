@@ -17,15 +17,13 @@
   set_fact:
     latest_migration: "{{ matching_migrations[0] }}"
 
-- name: Refresh the migration status
+- name: Wait for migration to reach CopyingPaused for plan {{ plan_name }}
   kubernetes.core.k8s_info:
     api_version: forklift.konveyor.io/v1beta1
     kind: Migration
     name: "{{ latest_migration.metadata.name }}"
     namespace: "{{ mtv_namespace }}"
   register: latest_migration_status
-
-- name: Wait for migration to reach CopyingPaused
   retries: 10
   delay: 10
   until: >-
@@ -39,7 +37,6 @@
       | list
       | length
     ) > 0
-  register: wait_result
 
 - name: Patch cutover time on latest migration {{ latest_migration.metadata.name }}
   kubernetes.core.k8s_json_patch:
