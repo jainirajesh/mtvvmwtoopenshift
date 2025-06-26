@@ -28,9 +28,16 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Filter rows where Keep IP is No (case-insensitive)
+    - name: Add Keep IP lowercase field to each row
       set_fact:
-        no_ip_rows: "{{ all_rows | select(lambda x: (x['Keep IP'] | lower) == 'no') | list }}"
+        all_rows_lower: >-
+          {{
+            all_rows | map('combine', {'keep_ip_lower': item['Keep IP'] | lower }) | list
+          }}
+
+    - name: Filter rows where Keep IP is 'no' (case-insensitive)
+      set_fact:
+        no_ip_rows: "{{ all_rows_lower | selectattr('keep_ip_lower', 'equalto', 'no') | list }}"
 
     - name: Group no-IP VMs by Plan Name
       set_fact:
