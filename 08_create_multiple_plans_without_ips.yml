@@ -28,16 +28,19 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Add Keep IP lowercase field to each row
+    - name: Filter rows where Keep IP is No
       set_fact:
-        all_rows_lower: >-
+        no_ip_rows: >-
           {{
-            all_rows | map('combine', {'keep_ip_lower': item['Keep IP'] | lower }) | list
+            all_rows
+            | selectattr('Keep IP', 'defined')
+            | selectattr('Keep IP', 'lower') | select('equalto', 'no')
+            | list
           }}
 
-    - name: Filter rows where Keep IP is 'no' (case-insensitive)
-      set_fact:
-        no_ip_rows: "{{ all_rows_lower | selectattr('keep_ip_lower', 'equalto', 'no') | list }}"
+    - name: Debug to check filtered rows (optional)
+      debug:
+        var: no_ip_rows
 
     - name: Group no-IP VMs by Plan Name
       set_fact:
@@ -61,19 +64,19 @@
                   list
                 ),
                 'is_warm': (
-                  (item.value | length > 0) and
+                  (item.value | length > 0) and 
                   ((item.value[0]['Cold or Warm'] | lower) == 'warm')
                 )
               }
             })
           }}
-      loop: "{{ plans_dict | dict2items }}"
+      loop: "{{ (plans_dict | default({})) | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
 
     - name: Loop over each plan group and create plans without preserved IPs
       include_tasks: 07_create_plan_only_without_ips.yml
-      loop: "{{ plans_with_vms | dict2items }}"
+      loop: "{{ (plans_with_vms | default({})) | dict2items }}"
       loop_control:
         loop_var: plan_group
       vars:
