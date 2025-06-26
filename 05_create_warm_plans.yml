@@ -38,26 +38,13 @@
 
     - name: Format warm plans structure with vms and rows
       set_fact:
-        plans_with_vms: >-
-          {{
-            warm_plans_dict
-            | dict2items
-            | map('combine', {
-                'key': item.key,
-                'value': {
-                  'rows': item.value,
-                  'vms': item.value
-                         | map('extract', ['RHOS Name', 'VM ID'])
-                         | map('community.general.dict_kv', 'name', 'id')
-                         | list,
-                  'is_warm': true
-                }
-              })
-            | list
-          }}
+        plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: { 'rows': item.value, 'vms': (item.value | map('extract', ['RHOS Name', 'VM ID']) | map('community.general.dict_kv', 'name', 'id') | list), 'is_warm': true } }) }}"
+      loop: "{{ warm_plans_dict | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
 
     - name: Loop over each warm plan group and create them
       include_tasks: create_single_plan.yaml
-      loop: "{{ plans_with_vms }}"
+      loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: plan_group
