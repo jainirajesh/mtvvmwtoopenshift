@@ -1,5 +1,5 @@
 ---
-- name: Create COLD migration plans from CSV
+- name: Create WARM migration plans from CSV
   hosts: localhost
   gather_facts: false
 
@@ -28,19 +28,19 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Filter only cold rows
+    - name: Filter only warm rows
       set_fact:
-        cold_rows: "{{ all_rows | selectattr('Cold or Warm', 'equalto', 'cold') | list }}"
+        warm_rows: "{{ all_rows | selectattr('Cold or Warm', 'equalto', 'warm') | list }}"
 
-    - name: Group cold VMs by Plan Name
+    - name: Group warm VMs by Plan Name
       set_fact:
-        cold_plans_dict: "{{ cold_rows | groupby('Plan Name') | items2dict(key_name=0, value_name=1) }}"
+        warm_plans_dict: "{{ warm_rows | groupby('Plan Name') | items2dict(key_name=0, value_name=1) }}"
 
-    - name: Format cold plans structure with vms and rows
+    - name: Format warm plans structure with vms and rows
       set_fact:
         plans_with_vms: >-
           {{
-            cold_plans_dict
+            warm_plans_dict
             | dict2items
             | map('combine', {
                 'key': item.key,
@@ -50,13 +50,13 @@
                          | map('extract', ['RHOS Name', 'VM ID'])
                          | map('community.general.dict_kv', 'name', 'id')
                          | list,
-                  'is_warm': false
+                  'is_warm': true
                 }
               })
             | list
           }}
 
-    - name: Loop over each cold plan group and create them
+    - name: Loop over each warm plan group and create them
       include_tasks: create_single_plan.yaml
       loop: "{{ plans_with_vms }}"
       loop_control:
