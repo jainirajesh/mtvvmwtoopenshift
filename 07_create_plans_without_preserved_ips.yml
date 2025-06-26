@@ -74,7 +74,7 @@
         label: "{{ item['Plan Name'] }}"
 
     - name: Loop over each plan group and create plans without preserved IPs
-      include_tasks: 07_create_plan_only_without_ips.yml
+      include_tasks: 08_create_plan_only_without_ips.yml
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: plan_group
