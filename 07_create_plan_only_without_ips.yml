@@ -1,66 +1,40 @@
----
-- name: Create migration plans only for VMs with Keep IP = No
-  hosts: localhost
-  gather_facts: false
-
-  vars_files:
-    - vars.yaml
-
-  tasks:
-    - name: Read CSV content (base64)
-      slurp:
-        src: vm_list_to_migrate.csv
-      register: raw_csv
-
-    - name: Decode and split CSV into lines
-      set_fact:
-        csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
-
-    - name: Extract CSV headers
-      set_fact:
-        csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
-
-    - name: Parse each row into a dictionary
-      set_fact:
-        all_rows: "{{ all_rows | default([]) + [dict(csv_headers | zip(row.split(',') | map('trim') | list))] }}"
-      loop: "{{ csv_lines[1:] }}"
-      loop_control:
-        loop_var: row
-      when: row.strip() != ''
-
-    - name: Filter rows with Keep IP = No
-      set_fact:
-        no_ip_rows: "{{ all_rows | selectattr('Keep IP', 'match', '^[Nn][Oo]$') | list }}"
-
-    - name: Group No-IP rows by Plan Name
-      set_fact:
-        plans_dict: "{{ plans_dict | default({}) | combine({ item['Plan Name']: (plans_dict[item['Plan Name']] | default([])) + [item] }) }}"
-      loop: "{{ no_ip_rows }}"
-      loop_control:
-        label: "{{ item['Plan Name'] }}"
-
-    - name: Format plans
-      set_fact:
-        plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: {
-            'rows': item.value,
-            'vms': (
-              item.value |
-              map('extract', ['RHOS Name', 'VM ID']) |
-              map('community.general.dict_kv', 'name', 'id') |
-              list
-            ),
-            'is_warm': (item.value[0]['Cold or Warm'] | lower) == 'warm'
-        }}) }}"
-      loop: "{{ plans_dict | dict2items }}"
-      loop_control:
-        label: "{{ item.key }}"
-      vars:
-        ansible_python_interpreter: "{{ ansible_playbook_python }}"
-
-    - name: Loop over No-IP plan groups and create
-      include_tasks: create_single_plan.yaml
-      loop: "{{ plans_with_vms | dict2items }}"
-      loop_control:
-        loop_var: plan_group
-      vars:
-        plan_group: "{{ plan_group }}"
+- name: Create Migration Plan without preserving IPs
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: forklift.konveyor.io/v1beta1
+      kind: Plan
+      metadata:
+        name: "{{ plan_group.key }}"
+        namespace: "{{ mtv_namespace }}"
+      spec:
+        provider:
+          source:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Provider
+            name: "{{ source_provider_name }}"
+            namespace: "{{ mtv_namespace }}"
+            uid: "{{ source_provider_uid }}"
+          destination:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Provider
+            name: "{{ destination_provider_name }}"
+            namespace: "{{ mtv_namespace }}"
+            uid: "{{ destination_provider_uid }}"
+        map:
+          network:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: NetworkMap
+            name: "netmap-{{ plan_group.key | lower }}"
+            namespace: "{{ mtv_namespace }}"
+          storage:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: StorageMap
+            name: "storagemap-{{ plan_group.key | lower }}"
+            namespace: "{{ mtv_namespace }}"
+        targetNamespace: "{{ plan_group.value.rows[0]['Target Namespace'] }}"
+        pvcNameTemplateUseGenerateName: true
+        preserveStaticIPs: false
+        migrateSharedDisks: true
+        warm: "{{ plan_group.value.is_warm }}"
+        vms: "{{ plan_group.value.vms }}"
