@@ -30,7 +30,13 @@
 
     - name: Filter rows where Keep IP is No
       set_fact:
-        no_ip_rows: "{{ all_rows | selectattr('Keep IP', 'lower') | select('equalto', 'no') | list }}"
+        no_ip_rows: >-
+          {{
+            all_rows
+            | selectattr('Keep IP', 'defined')
+            | selectattr('Keep IP', 'lower') | select('equalto', 'no')
+            | list
+          }}
 
     - name: Group no-IP VMs by Plan Name
       set_fact:
