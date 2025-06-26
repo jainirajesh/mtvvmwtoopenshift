@@ -1,5 +1,5 @@
 ---
-- name: Create migration plans from CSV with dynamic IP preservation
+- name: Create migration plans ONLY for VMs with Keep IP = No
   hosts: localhost
   gather_facts: false
 
@@ -28,21 +28,26 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Group VMs by Plan Name
+    - name: Filter rows with Keep IP = No
+      set_fact:
+        no_ip_rows: "{{ all_rows | selectattr('Keep IP', 'search', '^[Nn][Oo]$') | list }}"
+
+    - name: Group No-IP VMs by Plan Name
       set_fact:
         plans_dict: "{{ plans_dict | default({}) | combine({ item['Plan Name']: (plans_dict[item['Plan Name']] | default([])) + [item] }) }}"
-      loop: "{{ all_rows }}"
+      loop: "{{ no_ip_rows }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Format plans with warm flag and IP preservation
+    - name: Format plans with warm flag and no IP preservation
       set_fact:
         plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: {
             'rows': item.value,
             'vms': (
               item.value |
               map('extract', ['RHOS Name', 'VM ID']) |
-              map('community.general.dict_kv', 'name', 'id') |
+              map('zip', ['name', 'id']) |
+              map('dict') |
               list
             ),
             'is_warm': (item.value[0]['Cold or Warm'] | lower) == 'warm'
@@ -50,11 +55,8 @@
       loop: "{{ plans_dict | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
-      vars:
-        # Ensures 'dict_kv' is available
-        ansible_python_interpreter: "{{ ansible_playbook_python }}"
 
-    - name: Loop over each plan group and create plans
+    - name: Loop over No-IP plan groups and create
       include_tasks: 07_create_plan_only_without_ips.yml
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
