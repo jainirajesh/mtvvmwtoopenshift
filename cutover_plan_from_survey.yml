@@ -5,8 +5,8 @@
 
   vars:
     mtv_namespace: "openshift-mtv"
-    user_input_plan_names: "{{ plan_name | default('') }}"
-    plan_names: "{{ user_input_plan_names.split(',') | map('trim') | list }}"
+    survey_input_plan_names: "{{ survey_plan_names | default('') }}"
+    plan_names: "{{ survey_input_plan_names.split(',') | map('trim') | list }}"
 
   tasks:
     - name: Get all Migration CRs in the namespace
