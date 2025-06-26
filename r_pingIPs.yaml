@@ -1,4 +1,4 @@
-- name: Ping IPs and get hostnames without SSH
+- name: Check reachability and get hostnames (without ping)
   hosts: localhost
   gather_facts: false
 
@@ -13,9 +13,13 @@
       set_fact:
         ip_results: []
 
-    - name: Check ICMP reachability for each IP
-      shell: "ping -c 1 -W 1 {{ item }}"
-      register: ping_result
+    - name: Check TCP port (22) reachability for each IP
+      wait_for:
+        host: "{{ item }}"
+        port: 22
+        timeout: 2
+        state: started
+      register: port_check
       ignore_errors: true
       loop: "{{ ip_array }}"
       loop_control:
@@ -24,7 +28,7 @@
     - name: Store reachable IPs
       set_fact:
         reachable_ips: >-
-          {{ ping_result.results | selectattr('rc', 'eq', 0) | map(attribute='item') | list }}
+          {{ port_check.results | selectattr('rc', 'defined') | map(attribute='item') | list }}
 
     - name: Resolve hostnames for reachable IPs
       shell: "getent hosts {{ item }} | awk '{print $2}'"
@@ -36,12 +40,10 @@
 
     - name: Build results list
       set_fact:
-        ip_results: "{{ ip_results + [ {'ip': item, 'hostname': (lookup_result.stdout | default('Unresolved')) }] }}"
+        ip_results: "{{ ip_results + [ {'ip': item.item, 'hostname': (item.stdout | default('Unresolved')) }] }}"
       loop: "{{ host_lookup.results }}"
       loop_control:
         label: "{{ item.item }}"
-      vars:
-        lookup_result: "{{ item }}"
 
     - name: Format rows for table
       set_fact:
