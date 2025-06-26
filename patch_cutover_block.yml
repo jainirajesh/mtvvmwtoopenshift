@@ -17,6 +17,19 @@
   set_fact:
     latest_migration: "{{ matching_migrations[0] }}"
 
+- name: Wait for migration to reach CopyingPaused
+  retries: 10
+  delay: 5
+  until: >-
+    (
+      latest_migration_status.resources | selectattr('spec.plan.name', 'equalto', plan_name)
+      | map(attribute='status.migration.vms')
+      | flatten
+      | selectattr('phase', 'equalto', 'CopyingPaused')
+      | list
+      | length
+    ) > 0
+
 - name: Patch cutover time on latest migration {{ latest_migration.metadata.name }}
   kubernetes.core.k8s_json_patch:
     kind: Migration
