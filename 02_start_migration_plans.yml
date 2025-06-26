@@ -46,7 +46,7 @@
           }}
 
     - name: Start migration for each plan using task include
-      include_tasks: start_migration_block.yml
+      include_tasks: 02_1_start_migration_task.yml
       loop: "{{ plans_to_start }}"
       loop_control:
         loop_var: plan_name
