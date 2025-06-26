@@ -1,57 +1,54 @@
-- name: Add dynamic hosts based on IP list
+- name: Ping IPs and get hostnames without SSH
   hosts: localhost
   gather_facts: false
-
   vars:
     ip_list: "{{ ip_list | default('') }}"
     ip_array: "{{ ip_list.split(',') | map('trim') | list }}"
-
-  tasks:
-    - name: Add dynamic hosts to inventory
-      add_host:
-        name: "{{ item }}"
-        ansible_host: "{{ item }}"
-        groups: dynamic_targets
-      loop: "{{ ip_array }}"
-
-
-- name: Ping hosts and get hostnames
-  hosts: dynamic_targets
-  gather_facts: true
-  any_errors_fatal: false
-
-  tasks:
-    - name: Ensure host is reachable
-      ping:
-
-    - name: Set hostname fact per host
-      set_fact:
-        ip_hostname: "{{ {'ip': inventory_hostname, 'hostname': ansible_hostname} }}"
-
-    - name: Register hostname results
-      set_fact:
-        all_hostnames: "{{ all_hostnames | default([]) + [ip_hostname] }}"
-
-
-- name: Display hostname table
-  hosts: localhost
-  gather_facts: false
-
-  vars:
     header: "| IP Address      | Hostname         |\n|------------------|-------------------|"
 
   tasks:
-    - name: Set up formatted table rows
+
+    - name: Initialize results list
+      set_fact:
+        ip_results: []
+
+    - name: Ping each IP and try to resolve hostname
+      vars:
+        timeout: 2
+      block:
+        - name: Check ICMP reachability for {{ item }}
+          wait_for:
+            host: "{{ item }}"
+            port: 7         # Echo service (simulates ICMP in some setups)
+            timeout: "{{ timeout }}"
+            state: started
+          register: ping_result
+          ignore_errors: true
+          delegate_to: localhost
+
+        - name: Try to resolve hostname via getent
+          command: getent hosts "{{ item }}"
+          register: host_lookup
+          when: ping_result is not failed
+          ignore_errors: true
+          delegate_to: localhost
+
+        - name: Add to result list
+          set_fact:
+            ip_results: "{{ ip_results + [ { 'ip': item, 'hostname': (host_lookup.stdout.split() | last | default('Unresolved')) }] }}"
+          when: ping_result is not failed
+      loop: "{{ ip_array }}"
+
+    - name: Format rows for table
       set_fact:
         table_rows: >-
           {{
-            groups['dynamic_targets'] | map('extract', hostvars, 'ip_hostname') |
-            select('defined') |
+            ip_results |
             map('combine') |
             map('regex_replace', '^(.*)$', '| \1[ip] | \1[hostname] |') |
             list
           }}
 
-    - name: Print formatted hostname table
+    - name: Display formatted results table
       debug:
         msg: "{{ header + '\n' + (table_rows | join('\n')) }}"
