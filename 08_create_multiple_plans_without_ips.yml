@@ -28,15 +28,9 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Filter rows where Keep IP is No
+    - name: Filter rows where Keep IP is No (case-insensitive)
       set_fact:
-        no_ip_rows: >-
-          {{
-            all_rows
-            | selectattr('Keep IP', 'defined')
-            | selectattr('Keep IP', 'lower') | select('equalto', 'no')
-            | list
-          }}
+        no_ip_rows: "{{ all_rows | select(lambda x: (x['Keep IP'] | lower) == 'no') | list }}"
 
     - name: Group no-IP VMs by Plan Name
       set_fact:
@@ -60,7 +54,7 @@
                   list
                 ),
                 'is_warm': (
-                  (item.value | length > 0) and 
+                  (item.value | length > 0) and
                   ((item.value[0]['Cold or Warm'] | lower) == 'warm')
                 )
               }
