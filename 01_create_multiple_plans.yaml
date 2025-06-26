@@ -34,9 +34,13 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Construct VM objects and update plans_with_vms
+    - name: Construct VM objects and update plans_with_vms with is_warm flag
       set_fact:
-        plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: { 'vms': vm_list, 'rows': item.value } }) }}"
+        plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: {
+          'vms': vm_list,
+          'rows': item.value,
+          'is_warm': (item.value[0]['Cold or Warm'] | lower == 'warm')
+        } }) }}"
       vars:
         vm_list: >-
           {%- set result = [] -%}
