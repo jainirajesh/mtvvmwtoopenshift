@@ -3,7 +3,7 @@
   gather_facts: true
   vars:
     csv_file: "r_vm_list_to_migrate.csv"
-
+    mtv_namespace: "openshift-mtv"
   tasks:
     - name: Read CSV content (base64)
       slurp:
