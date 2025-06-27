@@ -5,7 +5,7 @@
 
   vars:
     csv_file: "r_vm_list_to_migrate.csv"
-
+    mtv_namespace: "openshift-mtv"
   tasks:
     - name: Read CSV content (base64)
       slurp:
@@ -44,11 +44,11 @@
           kind: Migration
           metadata:
             generateName: "{{ item['Plan Name'] }}-migration-"
-            namespace: "{{ item['Target Namespace'] }}"
+            namespace: "{{ mtv_namespace }}"
           spec:
             plan:
               name: "{{ item['Plan Name'] }}"
-              namespace: "{{ item['Target Namespace'] }}"
+              namespace: "{{ mtv_namespace }}"
       loop: "{{ unique_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
