@@ -7,7 +7,7 @@
     - vars.yaml
 
   vars:
-    # 👇 Injected via Controller Survey
+    # Injected via Controller Survey
     plan_names_from_survey: []  # Example: ["win-plan-02", "lin-plan-00002"]
 
   tasks:
@@ -47,12 +47,12 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-        - name: Construct VM objects and update plans_with_vms with is_warm flag
+    - name: Construct VM objects and update plans_with_vms with is_warm flag
       set_fact:
         plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: {
           'vms': vm_list,
           'rows': item.value,
-          'is_warm': (item.value[0]['Cold or Warm'] | lower == 'warm')
+          'is_warm': (item.value[0].get('Cold or Warm', '') | lower == 'warm')
         } }) }}"
       vars:
         vm_list: >-
