@@ -34,9 +34,13 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
+    - name: Sort unique plans by Sync Time
+      set_fact:
+        sorted_plans: "{{ unique_plans | sort(attribute='Sync Time') }}"
+
     - name: Poll and start migration plan once sync time reached
       include_tasks: r_part-start-migration-time.yaml
-      loop: "{{ unique_plans }}"
+      loop: "{{ sorted_plans }}"
       loop_control:
         label: "{{ item['Plan Name'] }}"
       when:
