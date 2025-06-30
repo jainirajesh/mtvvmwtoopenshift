@@ -48,8 +48,10 @@
 
     - name: Assemble final table
       set_fact:
-        final_table: "{{ [header, separator] + result_rows | join('\n') }}"
+        final_table: "{{ [header, separator] + result_rows }}"
 
-    - name: Show ping result table
+
+    - name: Display formatted ping results table
       debug:
-        msg: "{{ final_table }}"
+        msg: "{{ final_table | join('\n') }}"
+
