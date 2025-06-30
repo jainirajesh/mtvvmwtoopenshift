@@ -1,60 +1,71 @@
-- name: Check reachability and get hostnames (without ping)
+---
+- name: Pingpong test after migration using survey-provided IPs
   hosts: localhost
   gather_facts: false
 
   vars:
-    ip_list: "{{ ip_list | default('') }}"
+    ip_list: "{{ ip_list | default('') }}"  # Injected via survey
     ip_array: "{{ ip_list.split(',') | map('trim') | list }}"
-    header: "| IP Address      | Hostname         |\n|------------------|-------------------|"
+    header: "| IP Address      | Ping   | Hostname         |\n|------------------|--------|-------------------|"
 
   tasks:
-
     - name: Initialize results list
       set_fact:
-        ip_results: []
+        pingpong_results: []
 
-    - name: Check TCP port (22) reachability for each IP
-      wait_for:
-        host: "{{ item }}"
-        port: 22
-        timeout: 2
-        state: started
-      register: port_check
-      ignore_errors: true
+    - name: Ping each IP to check reachability
+      shell: "ping -c 1 -W 1 {{ item }} > /dev/null 2>&1 && echo success || echo fail"
+      register: ping_check
       loop: "{{ ip_array }}"
       loop_control:
         label: "{{ item }}"
+      changed_when: false
+      ignore_errors: true
 
-    - name: Store reachable IPs
+    - name: Store IPs with ping status
       set_fact:
-        reachable_ips: >-
-          {{ port_check.results | selectattr('rc', 'defined') | map(attribute='item') | list }}
+        reachable_ping: "{{ reachable_ping | default([]) + [ item.item ] }}"
+      when: item.stdout == "success"
+      loop: "{{ ping_check.results }}"
 
-    - name: Resolve hostnames for reachable IPs
+    - name: Resolve hostnames (only for ping-successful IPs)
       shell: "getent hosts {{ item }} | awk '{print $2}'"
       register: host_lookup
+      loop: "{{ reachable_ping }}"
       ignore_errors: true
-      loop: "{{ reachable_ips }}"
-      loop_control:
-        label: "{{ item }}"
+      changed_when: false
 
-    - name: Build results list
+    - name: Build result dictionary for ping successes
       set_fact:
-        ip_results: "{{ ip_results + [ {'ip': item.item, 'hostname': (item.stdout | default('Unresolved')) }] }}"
+        pingpong_results: "{{ pingpong_results + [ {
+          'ip': item.item,
+          'ping': '✅',
+          'hostname': item.stdout | default('Unresolved')
+        } ] }}"
       loop: "{{ host_lookup.results }}"
       loop_control:
         label: "{{ item.item }}"
 
-    - name: Format rows for table
+    - name: Add ping failures to results
+      set_fact:
+        pingpong_results: "{{ pingpong_results + [{
+          'ip': item.item,
+          'ping': '❌',
+          'hostname': 'Unreachable'
+        }] }}"
+      loop: "{{ ping_check.results }}"
+      when: item.stdout != "success"
+
+    - name: Format table rows
       set_fact:
         table_rows: >-
           {{
-            ip_results |
+            pingpong_results |
             map('combine') |
-            map('regex_replace', '^(.*)$', '| \1[ip] | \1[hostname] |') |
+            map('regex_replace', '^(.*)$', '| \1[ip] | \1[ping] | \1[hostname] |') |
             list
           }}
 
-    - name: Display formatted results table
+    - name: Display Pingpong Summary Table
       debug:
         msg: "{{ header + '\n' + (table_rows | join('\n')) }}"
