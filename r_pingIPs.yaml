@@ -7,6 +7,7 @@
     ip_list: "{{ ip_list | default('') }}"   # Injected from survey
     ip_array: "{{ ip_list.split(',') | map('trim') | list }}"
     header: "| IP Address      | Ping Status |"
+    separator: "|------------------|-------------|"
     ping_results: []
 
   tasks:
@@ -31,14 +32,18 @@
       loop_control:
         label: "{{ item.item }}"
 
-    - name: Format table as string
+    - name: Format result rows
       set_fact:
-        final_table: |
-          {{ header }}
-          |------------------|-------------|
-          {%- for item in ping_results %}
-          | {{ item.ip }} | {{ item.status }} |
-          {%- endfor %}
+        result_rows: >-
+          {%- set rows = [] -%}
+          {%- for item in ping_results -%}
+          {%-   set _ = rows.append("| " ~ item.ip | ljust(16) ~ " | " ~ item.status | center(11) ~ " |") -%}
+          {%- endfor -%}
+          {{ rows }}
+
+    - name: Assemble final table
+      set_fact:
+        final_table: "{{ [header, separator] + result_rows | join('\n') }}"
 
     - name: Show ping result table
       debug:
