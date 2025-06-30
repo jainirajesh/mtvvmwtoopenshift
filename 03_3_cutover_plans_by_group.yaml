@@ -1,55 +1,43 @@
 ---
-- name: Set matching migrations for {{ plan_name }}
-  set_fact:
-    matching_migrations: >-
-      {{
-        all_migrations.resources
-        | selectattr('spec.plan.name', 'equalto', plan_name)
-        | selectattr('spec.cutoverGroup', 'equalto', group_name)  # Filtering by group name
-        | sort(attribute='metadata.creationTimestamp', reverse=True)
-      }}
+- name: Patch cutover on latest Migration for each Plan from Survey input
+  hosts: localhost
+  gather_facts: false
 
-- name: Check if matching migration exists for {{ plan_name }} in group {{ group_name }}
-  fail:
-    msg: "❌ No Migration CR found for Plan '{{ plan_name }}' and Group '{{ group_name }}'. Please ensure Sync has been successfully run before Cutover."
-  when: matching_migrations | length == 0
+  vars:
+    mtv_namespace: "openshift-mtv"
+    survey_input_plan_names: "{{ survey_plan_names | default('') }}"
+    plan_names: "{{ survey_input_plan_names.split(',') | map('trim') | list }}"
 
-- name: Set latest migration object for {{ plan_name }}
-  set_fact:
-    latest_migration: "{{ matching_migrations[0] }}"
+  tasks:
+    - name: Read and parse the CSV file
+      community.general.read_csv:
+        path: "{{ csv_file_path }}"
+      register: vm_list
 
-- name: Wait for migration to reach CopyingPaused for plan {{ plan_name }}
-  kubernetes.core.k8s_info:
-    api_version: forklift.konveyor.io/v1beta1
-    kind: Migration
-    name: "{{ latest_migration.metadata.name }}"
-    namespace: "{{ mtv_namespace }}"
-  register: latest_migration_status
-  retries: 10
-  delay: 10
-  until: >-
-    (
-      latest_migration_status.resources
-      | map(attribute='status')
-      | selectattr('vms', 'defined')
-      | map(attribute='vms')
-      | flatten
-      | selectattr('phase', 'equalto', 'CopyingPaused')
-      | list
-      | length
-    ) > 0
+    - name: Filter VM data based on group names
+      set_fact:
+        filtered_vms: >
+          {{
+            vm_list.list | selectattr('Group', 'in', plan_names) | list
+          }}
 
-- name: Patch cutover time on latest migration {{ latest_migration.metadata.name }}
-  kubernetes.core.k8s_json_patch:
-    kind: Migration
-    api_version: forklift.konveyor.io/v1beta1
-    name: "{{ latest_migration.metadata.name }}"
-    namespace: "{{ mtv_namespace }}"
-    patch:
-      - op: add
-        path: /spec/cutover
-        value: "{{ cutover_time }}"
+    - name: Extract the unique plan names from filtered VM data
+      set_fact:
+        filtered_plans: "{{ filtered_vms | map(attribute='Plan Name') | unique | list }}"
 
-- name: ✅ Patched cutover on migration for {{ plan_name }} in group {{ group_name }}
-  debug:
-    msg: "Cutover patch applied on Migration '{{ latest_migration.metadata.name }}' for Plan '{{ plan_name }}' and Group '{{ group_name }}'"
+    - name: Get all Migration CRs in the namespace
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Migration
+        namespace: "{{ mtv_namespace }}"
+      register: all_migrations
+
+    - name: Calculate cutover time (UTC + 60 seconds)
+      set_fact:
+        cutover_time: "{{ lookup('pipe', 'date -u -d \"+60 seconds\" +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+
+    - name: Cutover each plan using block task
+      include_tasks: 03_2_patch_cutover_task.yml
+      loop: "{{ filtered_plans }}"
+      loop_control:
+        loop_var: plan_name
