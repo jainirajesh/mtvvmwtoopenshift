@@ -35,11 +35,16 @@
     - name: Format result rows
       set_fact:
         result_rows: >-
-          {%- set rows = [] -%}
-          {%- for item in ping_results -%}
-          {%-   set _ = rows.append("| " ~ item.ip | ljust(16) ~ " | " ~ item.status | center(11) ~ " |") -%}
-          {%- endfor -%}
-          {{ rows }}
+          {{
+            ping_results |
+            map(attribute='ip') |
+            zip(ping_results | map(attribute='status')) |
+            map('list') |
+            map('join', ' | ') |
+            map('regex_replace', '^(.*)$', '| \1 |') |
+            list
+          }}
+
 
     - name: Assemble final table
       set_fact:
