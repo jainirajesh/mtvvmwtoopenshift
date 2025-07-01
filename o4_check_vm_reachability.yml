@@ -1,0 +1,63 @@
+---
+- name: Check if migrated VMs are reachable (Linux/Windows)
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    # Survey input: Comma-separated IPs
+    ip_list: "{{ ip_list | default('') }}"
+    ip_array: "{{ ip_list.split(',') | map('trim') | list }}"
+
+  tasks:
+    - name: Initialize result list
+      set_fact:
+        ping_results: []
+
+    - name: Check reachability (port 22 for Linux, 3389 for Windows)
+      block:
+        - name: Try port 22 (SSH)
+          wait_for:
+            host: "{{ item }}"
+            port: 22
+            timeout: 2
+            state: started
+          register: ssh_check
+          ignore_errors: true
+
+        - name: Try port 3389 (RDP)
+          when: ssh_check is failed
+          wait_for:
+            host: "{{ item }}"
+            port: 3389
+            timeout: 2
+            state: started
+          register: rdp_check
+          ignore_errors: true
+
+        - name: Set status based on reachability
+          set_fact:
+            ping_results: >-
+              {{ ping_results + [ {
+                'ip': item,
+                'status': (
+                  ssh_check is succeeded or (rdp_check is defined and rdp_check is succeeded)
+                ) | ternary('✅', '❌')
+              } ] }}
+      loop: "{{ ip_array }}"
+      loop_control:
+        label: "{{ item }}"
+
+    - name: Format results table
+      set_fact:
+        formatted_output: >-
+          {%- set header = "| IP Address      | Ping Status |" -%}
+          {%- set separator = "|------------------|-------------|" -%}
+          {%- set rows = [] -%}
+          {%- for item in ping_results -%}
+          {%-   set _ = rows.append("| " ~ item.ip.ljust(16) ~ " | " ~ item.status.center(11) ~ " |") -%}
+          {%- endfor -%}
+          {{ ([header, separator] + rows) | join('\n') }}
+
+    - name: Show ping results in table format
+      debug:
+        msg: "{{ formatted_output }}"
