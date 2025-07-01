@@ -4,18 +4,44 @@
   gather_facts: false
 
   vars:
-    ip_list: "{{ ip_list | default('') }}"
-    ip_array: "{{ ip_list.split(',') | map('trim') | list }}"
+    ip_list: "{{ ip_list | default('') }}"  # From the Survey
+    os_type: "{{ os_type | default('linux') }}"  # From the Survey (linux/windows)
     ping_results: []
 
   tasks:
-    - name: Check reachability per IP (include task)
-      include_tasks: 04_2_check_single_ip.yml
+    - name: Convert IPs to an array
+      set_fact:
+        ip_array: "{{ ip_list.split(',') | map('trim') | list }}"
+
+    - name: Check connectivity based on OS type
+      block:
+        - name: Check SSH (22) reachability for Linux VMs
+          wait_for:
+            host: "{{ item }}"
+            port: 22
+            timeout: 5
+            state: started
+          register: ssh_result
+          when: os_type == 'linux'
+          ignore_errors: true
+
+        - name: Check RDP (3389) reachability for Windows VMs
+          wait_for:
+            host: "{{ item }}"
+            port: 3389
+            timeout: 5
+            state: started
+          register: rdp_result
+          when: os_type == 'windows'
+          ignore_errors: true
+
+        - name: Append current result to ping_results
+          set_fact:
+            ping_results: "{{ ping_results + [ {
+              'ip': item,
+              'status': ((ssh_result is succeeded and os_type == 'linux') or (rdp_result is succeeded and os_type == 'windows')) | ternary('✅', '❌')
+            } ] }}"
       loop: "{{ ip_array }}"
-      loop_control:
-        loop_var: current_ip
-      vars:
-        os_type: "{{ os_type }}"  # Use the survey-provided OS type variable
 
     - name: Format results into table
       set_fact:
