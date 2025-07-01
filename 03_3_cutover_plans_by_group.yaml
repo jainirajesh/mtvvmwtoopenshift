@@ -19,7 +19,7 @@
       set_fact:
         filtered_vms: >
           {{
-            vm_list.list | selectattr('Group', 'in', plan_names) | list
+            vm_list.list | selectattr('GM Cutover Sequence', 'in', plan_names) | list
           }}
 
     - name: Extract the unique plan names from filtered VM data
