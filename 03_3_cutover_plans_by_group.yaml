@@ -4,6 +4,7 @@
   gather_facts: false
 
   vars:
+    csv_file: "vm_list_to_migrate.csv"
     mtv_namespace: "openshift-mtv"
     survey_input_plan_names: "{{ survey_plan_names | default('') }}"
     plan_names: "{{ survey_input_plan_names.split(',') | map('trim') | list }}"
@@ -11,7 +12,7 @@
   tasks:
     - name: Read and parse the CSV file
       community.general.read_csv:
-        path: "{{ csv_file_path }}"
+        path: "{{ csv_file }}"
       register: vm_list
 
     - name: Filter VM data based on group names
