@@ -1,20 +1,22 @@
 ---
-- name: Check SSH (22) reachability
+- name: Check SSH (22) reachability for Linux
   wait_for:
     host: "{{ current_ip }}"
     port: 22
     timeout: 2
     state: started
   register: ssh_result
+  when: os_type == 'linux'  # Only check SSH if os_type is linux
   ignore_errors: true
 
-- name: Check RDP (3389) reachability
+- name: Check RDP (3389) reachability for Windows
   wait_for:
     host: "{{ current_ip }}"
     port: 3389
     timeout: 2
     state: started
   register: rdp_result
+  when: os_type == 'windows'  # Only check RDP if os_type is windows
   ignore_errors: true
 
 - name: Append current result to ping_results
