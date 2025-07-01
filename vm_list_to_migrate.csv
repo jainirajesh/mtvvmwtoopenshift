@@ -2,6 +2,6 @@ Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS
 1,linux-demo-01,vm-31433,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),lin-plan-017,linux-ns071,lvms-vg1,warm,yes,2025-07-01 07:30:00
 2,linux-demo-02,vm-31441,1,group-6,1,prod,Red Hat Enterprise Linux 8 (64-bit),lin-plan-017,linux-ns071,lvms-vg1,warm,yes,2025-07-01 07:30:00
 3,linux-demo-03,vm-31442,1,group-2,1,prod,Red Hat Enterprise Linux 8 (64-bit),lin-plan-017,linux-ns071,lvms-vg1,warm,yes,2025-07-01 07:30:00
-4,win-demo-01,vm-31434,2,group-3,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-017,win-ns071,lvms-vg1,cold,yes,2025-07-01 07:30:00
-5,win-demo-02,vm-31438,2,group-4,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-017,win-ns071,lvms-vg1,warm,yes,2025-07-01 07:30:00
+4,win-demo-01,vm-31434,2,group-5,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-017,win-ns071,lvms-vg1,cold,yes,2025-07-01 07:30:00
+5,win-demo-02,vm-31438,2,group-5,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-017,win-ns071,lvms-vg1,warm,yes,2025-07-01 07:30:00
 6,win-demo-03,vm-31440,2,group-5,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-017,win-ns0071,lvms-vg1,warm,yes,2025-07-01 07:30:00
