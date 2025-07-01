@@ -8,14 +8,6 @@
     ip_array: "{{ ip_list.split(',') | map('trim') | list }}"
     ping_results: []
 
-  vars_prompt:
-    - name: os_type
-      prompt: "Enter the OS type for all IPs (linux/windows)"
-      choices:
-        - linux
-        - windows
-      default: linux
-
   tasks:
     - name: Check reachability per IP (include task)
       include_tasks: 04_2_check_single_ip.yml
@@ -23,7 +15,7 @@
       loop_control:
         loop_var: current_ip
       vars:
-        os_type: "{{ os_type }}"  # Use the input OS type for the entire playbook
+        os_type: "{{ os_type }}"  # Use the survey-provided OS type variable
 
     - name: Format results into table
       set_fact:
