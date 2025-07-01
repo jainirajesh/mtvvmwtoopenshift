@@ -1,53 +1,37 @@
 ---
-- name: Check if migrated VMs are reachable (Linux/Windows)
+- name: Check if migrated VMs are reachable (Linux/Windows) without community.general
   hosts: localhost
   gather_facts: false
 
   vars:
-    # Survey input: Comma-separated IPs
+    # Provide comma-separated IPs from survey or CLI
     ip_list: "{{ ip_list | default('') }}"
     ip_array: "{{ ip_list.split(',') | map('trim') | list }}"
+    ping_results: []
 
   tasks:
-    - name: Initialize result list
+
+    - name: Check TCP reachability on port 22 and 3389 for each IP
+      vars:
+        ssh_check: >-
+          {{
+            lookup('pipe', "nc -z -w2 " ~ item ~ " 22 && echo open || echo closed")
+          }}
+        rdp_check: >-
+          {{
+            lookup('pipe', "nc -z -w2 " ~ item ~ " 3389 && echo open || echo closed")
+          }}
+        status_icon: >-
+          {{
+            ('open' in ssh_check or 'open' in rdp_check) | ternary('✅', '❌')
+          }}
       set_fact:
-        ping_results: []
-
-    - name: Check reachability (port 22 for Linux, 3389 for Windows)
-      block:
-        - name: Try port 22 (SSH)
-          wait_for:
-            host: "{{ item }}"
-            port: 22
-            timeout: 2
-            state: started
-          register: ssh_check
-          ignore_errors: true
-
-        - name: Try port 3389 (RDP)
-          when: ssh_check is failed
-          wait_for:
-            host: "{{ item }}"
-            port: 3389
-            timeout: 2
-            state: started
-          register: rdp_check
-          ignore_errors: true
-
-        - name: Set status based on reachability
-          set_fact:
-            ping_results: >-
-              {{ ping_results + [ {
-                'ip': item,
-                'status': (
-                  ssh_check is succeeded or (rdp_check is defined and rdp_check is succeeded)
-                ) | ternary('✅', '❌')
-              } ] }}
+        ping_results: "{{ ping_results + [ {'ip': item, 'status': status_icon} ] }}"
       loop: "{{ ip_array }}"
       loop_control:
         label: "{{ item }}"
 
-    - name: Format results table
+    - name: Format results into a table
       set_fact:
         formatted_output: >-
           {%- set header = "| IP Address      | Ping Status |" -%}
@@ -58,6 +42,6 @@
           {%- endfor -%}
           {{ ([header, separator] + rows) | join('\n') }}
 
-    - name: Show ping results in table format
+    - name: Show reachability result table
       debug:
         msg: "{{ formatted_output }}"
