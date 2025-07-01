@@ -1,0 +1,25 @@
+---
+- name: Check SSH (22) reachability
+  wait_for:
+    host: "{{ current_ip }}"
+    port: 22
+    timeout: 2
+    state: started
+  register: ssh_result
+  ignore_errors: true
+
+- name: Check RDP (3389) reachability
+  wait_for:
+    host: "{{ current_ip }}"
+    port: 3389
+    timeout: 2
+    state: started
+  register: rdp_result
+  ignore_errors: true
+
+- name: Append current result to ping_results
+  set_fact:
+    ping_results: "{{ ping_results + [ {
+      'ip': current_ip,
+      'status': ((ssh_result is succeeded) or (rdp_result is succeeded)) | ternary('✅', '❌')
+    } ] }}"
