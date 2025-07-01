@@ -1,0 +1,47 @@
+---
+- name: Patch cutover on latest Migration for each WARM Plan
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    mtv_namespace: "openshift-mtv"
+
+  tasks:
+    - name: Get all Plan CRs in the namespace
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Plan
+        namespace: "{{ mtv_namespace }}"
+      register: all_plans
+
+    - name: Filter only warm plan names
+      set_fact:
+        warm_plan_names: >-
+          {{
+            all_plans.resources
+            | selectattr('spec.warm', 'defined')
+            | selectattr('spec.warm', 'equalto', true)
+            | map(attribute='metadata.name')
+            | list
+          }}
+
+    - name: Debug included warm plans
+      debug:
+        msg: "✅ Warm plans to cutover: {{ warm_plan_names }}"
+
+    - name: Get all Migration CRs in the namespace
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Migration
+        namespace: "{{ mtv_namespace }}"
+      register: all_migrations
+
+    - name: Calculate cutover time (UTC + 60 seconds)
+      set_fact:
+        cutover_time: "{{ lookup('pipe', 'date -u -d \"+60 seconds\" +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+
+    - name: Cutover each warm plan using block task
+      include_tasks: 03_2_patch_cutover_task.yml
+      loop: "{{ warm_plan_names }}"
+      loop_control:
+        loop_var: plan_name
