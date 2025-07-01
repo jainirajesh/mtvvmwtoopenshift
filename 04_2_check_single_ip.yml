@@ -3,25 +3,25 @@
   wait_for:
     host: "{{ current_ip }}"
     port: 22
-    timeout: 2
+    timeout: 5
     state: started
   register: ssh_result
-  when: os_type == 'linux'  # Only check SSH if os_type is linux
+  when: os_type == 'linux'  # Only check port 22 if the OS is Linux
   ignore_errors: true
 
 - name: Check RDP (3389) reachability for Windows
   wait_for:
     host: "{{ current_ip }}"
     port: 3389
-    timeout: 2
+    timeout: 5
     state: started
   register: rdp_result
-  when: os_type == 'windows'  # Only check RDP if os_type is windows
+  when: os_type == 'windows'  # Only check port 3389 if the OS is Windows
   ignore_errors: true
 
 - name: Append current result to ping_results
   set_fact:
     ping_results: "{{ ping_results + [ {
       'ip': current_ip,
-      'status': ((ssh_result is succeeded) or (rdp_result is succeeded)) | ternary('✅', '❌')
+      'status': ((ssh_result is succeeded and os_type == 'linux') or (rdp_result is succeeded and os_type == 'windows')) | ternary('✅', '❌')
     } ] }}"
