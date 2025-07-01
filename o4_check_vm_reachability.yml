@@ -1,5 +1,5 @@
 ---
-- name: Check if migrated VMs are reachable (Linux/Windows) using TCP ports
+- name: Check reachability of VMs using TCP ports (22 for Linux, 3389 for Windows)
   hosts: localhost
   gather_facts: false
 
@@ -9,41 +9,13 @@
     ping_results: []
 
   tasks:
-
-    - name: Check reachability of each IP (Linux/Windows)
-      vars:
-        current_ip: "{{ item }}"
-      block:
-
-        - name: Check SSH (port 22) reachability
-          wait_for:
-            host: "{{ current_ip }}"
-            port: 22
-            timeout: 2
-            state: started
-          register: ssh_result
-          ignore_errors: true
-
-        - name: Check RDP (port 3389) reachability
-          wait_for:
-            host: "{{ current_ip }}"
-            port: 3389
-            timeout: 2
-            state: started
-          register: rdp_result
-          ignore_errors: true
-
-        - name: Append result for current IP
-          set_fact:
-            ping_results: "{{ ping_results + [ {
-              'ip': current_ip,
-              'status': ((ssh_result is succeeded) or (rdp_result is succeeded)) | ternary('✅', '❌')
-            } ] }}"
+    - name: Check reachability per IP (include task)
+      include_tasks: 04_2_check_single_ip.yml
       loop: "{{ ip_array }}"
       loop_control:
-        label: "{{ item }}"
+        loop_var: current_ip
 
-    - name: Format results into a table
+    - name: Format results into table
       set_fact:
         formatted_output: >-
           {%- set header = "| IP Address      | Ping Status |" -%}
@@ -54,6 +26,6 @@
           {%- endfor -%}
           {{ ([header, separator] + rows) | join('\n') }}
 
-    - name: Show formatted reachability table
+    - name: Display formatted reachability table
       debug:
         msg: "{{ formatted_output }}"
