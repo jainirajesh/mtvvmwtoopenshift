@@ -22,10 +22,10 @@
           {%- set separator = "|------------------|-------------|" -%}
           {%- set rows = [] -%}
           {%- for item in ping_results -%}
-          {%-   set _ = rows.append("| " ~ item.ip.ljust(16) ~ " | " ~ item.status.center(11) ~ " |") -%}
+          {%-   set _ = rows.append("| " ~ item.ip.ljust(15) ~ " | " ~ item.status.center(11) ~ " |") -%}
           {%- endfor -%}
           {{ ([header, separator] + rows) | join('\n') }}
 
     - name: Display formatted reachability table
       debug:
-        msg: "{{ formatted_output.split('\n') }}"
+        msg: "{{ formatted_output }}"
