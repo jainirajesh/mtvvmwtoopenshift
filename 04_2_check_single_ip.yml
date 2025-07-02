@@ -16,11 +16,16 @@
     state: started
   register: rdp_result
   ignore_errors: true
-  when: ssh_result is failed  # Only check 3389 if 22 failed
 
 - name: Append current result to ping_results
   set_fact:
     ping_results: "{{ ping_results + [ {
       'ip': current_ip,
-      'status': (ssh_result is succeeded or (ssh_result is failed and rdp_result is defined and rdp_result is succeeded)) | ternary('✅', '❌')
+      'status': (
+        (ssh_result is defined and ssh_result.failed == false) or
+        (rdp_result is defined and rdp_result.failed == false)
+      ) | ternary('✅', '❌'),
+      'port': (
+        ssh_result is defined and ssh_result.failed == false
+      ) | ternary('22', (rdp_result is defined and rdp_result.failed == false) | ternary('3389', 'None'))
     } ] }}"
