@@ -29,3 +29,10 @@
     - name: Display formatted reachability table
       debug:
         var: formatted_output
+
+    - name: Save formatted output as artifact
+      set_stats:
+        data:
+          reachability_table: "{{ formatted_output }}"
+        per_host: false
+
