@@ -17,6 +17,13 @@
   register: rdp_result
   ignore_errors: true
 
+- name: Debug port check results
+  debug:
+    msg:
+      - "IP: {{ current_ip }}"
+      - "SSH success: {{ ssh_result.failed == false }}"
+      - "RDP success: {{ rdp_result.failed == false }}"
+
 - name: Append current result to ping_results
   set_fact:
     ping_results: "{{ ping_results + [ {
