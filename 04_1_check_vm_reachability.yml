@@ -28,4 +28,4 @@
 
     - name: Display formatted reachability table
       debug:
-        msg: "{{ formatted_output }}"
+        var: formatted_output
