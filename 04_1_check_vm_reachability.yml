@@ -28,4 +28,4 @@
 
     - name: Display formatted reachability table
       debug:
-        msg: "{{ formatted_output }}"
+        msg: "{{ formatted_output.split('\n') }}"
