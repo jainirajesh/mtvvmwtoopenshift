@@ -1,17 +1,14 @@
 ---
-- name: Check reachability of VMs on ports 22 and 3389
+- name: Check reachability of VMs using TCP ports (22 for Linux, 3389 for Windows)
   hosts: localhost
   gather_facts: false
 
   vars:
-    ip_list: "{{ ip_list | default('') }}"  # From survey
+    ip_list: "{{ ip_list | default('') }}"
+    ip_array: "{{ ip_list.split(',') | map('trim') | list }}"
     ping_results: []
 
   tasks:
-    - name: Convert IPs to an array
-      set_fact:
-        ip_array: "{{ ip_list.split(',') | map('trim') | list }}"
-
     - name: Check reachability per IP (include task)
       include_tasks: 04_2_check_single_ip.yml
       loop: "{{ ip_array }}"
@@ -21,12 +18,11 @@
     - name: Format results into table
       set_fact:
         formatted_output: >-
-          {%- set header = "| IP Address      | Port 22 | Port 3389 |" -%}
-          {%- set separator = "|------------------|---------|-----------|" -%}
+          {%- set header = "| IP Address      | Ping Status |" -%}
+          {%- set separator = "|------------------|-------------|" -%}
           {%- set rows = [] -%}
           {%- for item in ping_results -%}
-          {%-   set row = "| " ~ item.ip.ljust(16) ~ " | " ~ item.port22_status.center(7) ~ " | " ~ item.port3389_status.center(9) ~ " |" -%}
-          {%-   set _ = rows.append(row) -%}
+          {%-   set _ = rows.append("| " ~ item.ip.ljust(16) ~ " | " ~ item.status.center(11) ~ " |") -%}
           {%- endfor -%}
           {{ ([header, separator] + rows) | join('\n') }}
 
