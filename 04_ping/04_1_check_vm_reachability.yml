@@ -10,7 +10,7 @@
 
   tasks:
     - name: Check reachability per IP (include task)
-      include_tasks: 04_2_check_single_ip.yml
+      include_tasks: include/04_2_check_single_ip.yml
       loop: "{{ ip_array }}"
       loop_control:
         loop_var: current_ip
