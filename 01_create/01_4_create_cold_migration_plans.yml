@@ -4,12 +4,12 @@
   gather_facts: false
 
   vars_files:
-    - vars.yaml
+    - ../vars.yaml
 
   tasks:
     - name: Read CSV content (base64)
       slurp:
-        src: vm_list_to_migrate.csv
+        src: ../vm_list_to_migrate.csv
       register: raw_csv
 
     - name: Decode and split CSV into lines
