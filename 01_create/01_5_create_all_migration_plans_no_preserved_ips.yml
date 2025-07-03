@@ -4,12 +4,12 @@
   gather_facts: false
 
   vars_files:
-    - vars.yaml
+    - ../vars.yaml
 
   tasks:
     - name: Read CSV content (base64)
       slurp:
-        src: vm_list_to_migrate.csv
+        src: ../vm_list_to_migrate.csv
       register: raw_csv
 
     - name: Decode and split CSV into lines
@@ -74,7 +74,7 @@
         label: "{{ item['Plan Name'] }}"
 
     - name: Loop over each plan group and create plans without preserved IPs
-      include_tasks: 01_6_create_single_plan_no_preserved_ip.yml
+      include_tasks: includes/create_single_plan_no_preserved_ip.yml
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: plan_group
