@@ -1,0 +1,60 @@
+---
+- name: Initialize attempt counter
+  set_fact:
+    attempt_count: 0
+
+- name: Reachability retry loop for {{ current_ip }}
+  block:
+    - name: Try SSH port 22 reachability
+      wait_for:
+        host: "{{ current_ip }}"
+        port: 22
+        timeout: "{{ retry_interval }}"
+        state: started
+      register: ssh_result
+      ignore_errors: true
+
+    - name: Try RDP port 3389 reachability
+      wait_for:
+        host: "{{ current_ip }}"
+        port: 3389
+        timeout: "{{ retry_interval }}"
+        state: started
+      register: rdp_result
+      ignore_errors: true
+
+    - name: Increment attempt count
+      set_fact:
+        attempt_count: "{{ attempt_count + 1 }}"
+
+    - name: Determine if VM is reachable
+      set_fact:
+        reachable: >-
+          {{
+            ((ssh_result is defined and ssh_result.failed == false) or
+             (rdp_result is defined and rdp_result.failed == false))
+          }}
+
+    # Optional small wait using 'wait_for' to delay retry but without pause task
+    - name: Wait 10 seconds before next retry if needed
+      wait_for:
+        timeout: 10
+      when: not reachable and attempt_count < max_retries
+
+
+  rescue:
+    - name: Handle unexpected error, mark as unreachable
+      set_fact:
+        reachable: false
+
+  until: reachable or attempt_count >= max_retries
+  retries: "{{ max_retries }}"
+  delay: 0
+
+- name: Append result for {{ current_ip }} to ping_results
+  set_fact:
+    ping_results: "{{ ping_results + [ {
+      'ip': current_ip,
+      'status': reachable | ternary('✅ Reachable', '❌ Unreachable after retries'),
+      'attempts': attempt_count
+    } ] }}"
