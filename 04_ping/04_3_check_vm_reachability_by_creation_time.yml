@@ -1,0 +1,40 @@
+---
+- name: Check VM reachability after migration with retry logic
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    ip_list: "{{ ip_list | default('') }}"
+    ip_array: "{{ ip_list.split(',') | map('trim') | list }}"
+    ping_results: []
+    max_wait_time: 1200  # Total max wait in seconds (20 minutes)
+    retry_interval: 120  # Seconds between retries (2 minutes)
+    max_retries: "{{ (max_wait_time // retry_interval) | int }}"
+
+  tasks:
+    - name: Check reachability for each VM IP with retries
+      include_tasks: include/04_5_check_vm_with_retries.yml
+      loop: "{{ ip_array }}"
+      loop_control:
+        loop_var: current_ip
+
+    - name: Format results into a neat table
+      set_fact:
+        formatted_output: >-
+          {%- set header = "| IP Address      | Status                   | Attempts |" -%}
+          {%- set separator = "|-----------------|--------------------------|----------|" -%}
+          {%- set rows = [] -%}
+          {%- for item in ping_results -%}
+          {%-   set _ = rows.append("| " ~ item.ip.ljust(15) ~ " | " ~ item.status.ljust(24) ~ " | " ~ (item.attempts|string).center(8) ~ " |") -%}
+          {%- endfor -%}
+          {{ ([header, separator] + rows) | join('\n') }}
+
+    - name: Display the reachability results table
+      debug:
+        var: formatted_output
+
+    - name: Save the reachability table as a playbook artifact
+      set_stats:
+        data:
+          reachability_table: "{{ formatted_output }}"
+        per_host: false
