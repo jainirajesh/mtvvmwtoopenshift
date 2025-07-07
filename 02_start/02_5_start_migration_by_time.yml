@@ -2,7 +2,7 @@
   hosts: localhost
   gather_facts: true
   vars:
-    csv_file: "vm_list_to_migrate.csv"
+    csv_file: "../vm_list_to_migrate.csv"
     mtv_namespace: "openshift-mtv"
   tasks:
     - name: Read CSV content (base64)
