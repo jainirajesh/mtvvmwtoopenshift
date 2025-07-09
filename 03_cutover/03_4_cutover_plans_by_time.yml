@@ -48,7 +48,14 @@
       wait_for:
         timeout: "{{ cutover_epoch - now_epoch }}"
       when: cutover_epoch > now_epoch
-
+    
+    - name: Get all Migration CRs in the namespace
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Migration
+        namespace: "{{ mtv_namespace }}"
+      register: all_migrations
+    
     - name: Cutover each validated plan
       include_tasks: include/03_2_patch_cutover_task.yml
       loop: "{{ filtered_plans }}"
