@@ -6,11 +6,8 @@
   vars:
     csv_file: "../vm_list_to_migrate.csv"
     mtv_namespace: "openshift-mtv"
-    
-    # Injected via AAP Survey
-    survey_plan_names: "{{ survey_plan_names | default('') }}"  # e.g., "lin-plan-00002,win-plan-02"
-    cutover_time: "{{ cutover_time | default('') }}"            # e.g., "2025-07-09T08:30:00Z"
 
+    # Injected via AAP Survey (do not redefine survey_plan_names here)
     plan_names: "{{ (survey_plan_names | default('')) | split(',') | map('trim') | list }}"
 
   tasks:
@@ -25,7 +22,7 @@
 
     - name: Validate plan names against CSV
       fail:
-        msg: "The following plan names are not found in the CSV: {{ plan_names | difference(valid_plan_names) }}"
+        msg: "❌ The following plan names are not found in the CSV: {{ plan_names | difference(valid_plan_names) }}"
       when: plan_names | difference(valid_plan_names) | length > 0
 
     - name: Filter rows matching plan names
@@ -36,34 +33,34 @@
       set_fact:
         filtered_plans: "{{ filtered_vms | map(attribute='Plan Name') | unique | list }}"
 
-    - name: Convert cutover_time to epoch
+    - name: Convert cutover_time to epoch (UTC)
       set_fact:
         cutover_epoch: "{{ (cutover_time | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
 
-    - name: Get current epoch (UTC)
+    - name: Get current epoch time (UTC-safe)
       set_fact:
-        now_epoch: "{{ lookup('pipe', 'date +%s') | int }}"
-    
-    - name: Debug cutover time and epoch
+        now_epoch: "{{ (now('utc').timestamp() | int) }}"
+
+    - name: Debug cutover and current time details
       debug:
         msg:
-          - "cutover_time: {{ cutover_time }}"
-          - "cutover_epoch: {{ cutover_epoch }}"
-          - "now_epoch: {{ now_epoch }}"
-          - "timeout: {{ cutover_epoch - now_epoch }}"
-    
+          - "📅 Cutover Time (UTC): {{ cutover_time }}"
+          - "⏱️ Cutover Epoch: {{ cutover_epoch }}"
+          - "🕒 Current UTC Epoch: {{ now_epoch }}"
+          - "⌛ Timeout (sec): {{ cutover_epoch - now_epoch }}"
+
     - name: Wait until cutover time
       wait_for:
         timeout: "{{ cutover_epoch - now_epoch }}"
       when: cutover_epoch > now_epoch
-    
+
     - name: Get all Migration CRs in the namespace
       kubernetes.core.k8s_info:
         api_version: forklift.konveyor.io/v1beta1
         kind: Migration
         namespace: "{{ mtv_namespace }}"
       register: all_migrations
-    
+
     - name: Cutover each validated plan
       include_tasks: include/03_2_patch_cutover_task.yml
       loop: "{{ filtered_plans }}"
