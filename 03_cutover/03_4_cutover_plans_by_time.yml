@@ -39,11 +39,15 @@
     - name: Convert cutover_time to epoch
       set_fact:
         cutover_epoch: "{{ (cutover_time | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
-    
+
+    - name: Get current epoch (UTC)
+      set_fact:
+        now_epoch: "{{ lookup('pipe', 'date +%s') | int }}"
+
     - name: Wait until cutover time
       wait_for:
-        timeout: "{{ cutover_epoch - (now().timestamp() | int) }}"
-      when: cutover_epoch > (now().timestamp() | int)
+        timeout: "{{ cutover_epoch - now_epoch }}"
+      when: cutover_epoch > now_epoch
 
     - name: Cutover each validated plan
       include_tasks: include/03_2_patch_cutover_task.yml
