@@ -1,3 +1,5 @@
 Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS,Plan Name,Target Namespace,Target Storage,Cold or Warm,Keep IP,Sync Time 
-1,linux-demo-01,vm-31433,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),lin-plan-7715,linux-ns1,lvms-vg1,cold,yes,2025-07-09 02:30:00
-2,linux-demo-02,vm-31441,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),lin-plan-7715,linux-ns1,lvms-vg1,cold,yes,2025-07-09 02:30:00
+1,linux-demo-01,vm-31433,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),lin-plan-090701,linux-ns09,lvms-vg1,warm,yes,2025-07-09 02:30:00
+2,linux-demo-02,vm-31441,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),lin-plan-090701,linux-ns09,lvms-vg1,warm,yes,2025-07-09 02:30:00
+3,linux-demo-03,vm-31442,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),win-plan-090701,win-ns09,lvms-vg1,warm,yes,2025-07-09 02:30:00
+
