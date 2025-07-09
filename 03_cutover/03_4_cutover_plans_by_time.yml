@@ -1,65 +1,52 @@
 ---
-- name: Cutover plans based on scheduled time
+- name: Cutover plans based on scheduled time from survey input
   hosts: localhost
   gather_facts: false
 
   vars:
-    # 👇 From AAP Survey
+    csv_file: "../vm_list_to_migrate.csv"
     mtv_namespace: "openshift-mtv"
-    plan_names_from_survey: []   # Example: ["win-plan-01", "lin-plan-02"]
-    cutover_time: ""             # Format: 2025-07-09T08:30:00Z
+    
+    # Injected via AAP Survey
+    survey_plan_names: "{{ survey_plan_names | default('') }}"  # e.g., "lin-plan-00002,win-plan-02"
+    cutover_time: "{{ cutover_time | default('') }}"            # e.g., "2025-07-09T08:30:00Z"
+
+    plan_names: "{{ survey_plan_names.split(',') | map('trim') | list }}"
 
   tasks:
+    - name: Read and parse the CSV file
+      community.general.read_csv:
+        path: "{{ csv_file }}"
+      register: vm_list
 
-    - name: Read CSV content (base64)
-      slurp:
-        src: ../vm_list_to_migrate.csv
-      register: raw_csv
-
-    - name: Decode and split CSV into lines
+    - name: Extract unique valid plan names from CSV
       set_fact:
-        csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
+        valid_plan_names: "{{ vm_list.list | map(attribute='Plan Name') | unique | list }}"
 
-    - name: Extract CSV headers
-      set_fact:
-        csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
-
-    - name: Parse CSV rows into dictionaries
-      set_fact:
-        all_rows: >-
-          {{
-            csv_lines[1:] | reject('equalto', '') 
-            | map('split', ',') 
-            | map('map', 'trim') 
-            | map('zip', csv_headers) 
-            | map('dict') 
-            | list
-          }}
-
-    - name: Extract valid plan names from CSV
-      set_fact:
-        valid_plan_names: "{{ all_rows | map(attribute='Plan Name') | list | unique }}"
-
-    - name: Validate that all selected plans exist in CSV
+    - name: Validate plan names against CSV
       fail:
-        msg: "The following plan names are not found in the CSV: {{ missing_plans }}"
-      when: missing_plans | length > 0
-      vars:
-        missing_plans: "{{ plan_names_from_survey | difference(valid_plan_names) }}"
+        msg: "The following plan names are not found in the CSV: {{ plan_names | difference(valid_plan_names) }}"
+      when: plan_names | difference(valid_plan_names) | length > 0
 
-    - name: Convert cutover time to epoch
+    - name: Filter rows matching plan names
+      set_fact:
+        filtered_vms: "{{ vm_list.list | selectattr('Plan Name', 'in', plan_names) | list }}"
+
+    - name: Extract final list of filtered unique plans
+      set_fact:
+        filtered_plans: "{{ filtered_vms | map(attribute='Plan Name') | unique | list }}"
+
+    - name: Convert cutover_time to epoch
       set_fact:
         cutover_epoch: "{{ (cutover_time | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
 
     - name: Wait until cutover time
       wait_for:
         timeout: "{{ cutover_epoch - ansible_date_time.epoch | int }}"
-      when: (cutover_epoch | int) > (ansible_date_time.epoch | int)
+      when: cutover_epoch > (ansible_date_time.epoch | int)
 
-    - name: Cutover each plan from survey
-      include_tasks: 03_2_patch_cutover_task.yml
-      loop: "{{ plan_names_from_survey }}"
+    - name: Cutover each validated plan
+      include_tasks: include/03_2_patch_cutover_task.yml
+      loop: "{{ filtered_plans }}"
       loop_control:
         loop_var: plan_name
-      vars:
-        plan_name: "{{ plan_name }}"
