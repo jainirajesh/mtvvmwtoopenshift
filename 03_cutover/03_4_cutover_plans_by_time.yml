@@ -1,38 +1,65 @@
 ---
-- name: Cutover Multiple Migration Plans at Scheduled Time
+- name: Cutover plans based on scheduled time
   hosts: localhost
   gather_facts: false
 
   vars:
-    # These come from the survey
-    survey_input_plan_names: "{{ survey_plan_names | default('') }}"             # e.g. ["win-plan-001", "lin-plan-002"]
-    plan_names: "{{ survey_input_plan_names.split(',') | map('trim') | list }}"
-    cutover_time: ""                                                             # e.g. 2025-07-09T08:30:00Z
+    # 👇 From AAP Survey
+    mtv_namespace: "openshift-mtv"
+    plan_names_from_survey: []   # Example: ["win-plan-01", "lin-plan-02"]
+    cutover_time: ""             # Format: 2025-07-09T08:30:00Z
 
   tasks:
-    - name: Convert input time to timestamp (seconds)
+
+    - name: Read CSV content (base64)
+      slurp:
+        src: ../vm_list_to_migrate.csv
+      register: raw_csv
+
+    - name: Decode and split CSV into lines
       set_fact:
-        cutover_ts: "{{ (cutover_time | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
-        current_ts: "{{ ansible_date_time.epoch | int }}"
+        csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
 
-    - name: Calculate wait time
+    - name: Extract CSV headers
       set_fact:
-        wait_duration: "{{ cutover_ts - current_ts }}"
+        csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
 
-    - name: Print Scheduled Cutover Info
-      debug:
-        msg: >-
-          The following plans will be cutover at {{ cutover_time }}:
-          {{ plan_names | join(', ') }}
-          Waiting {{ wait_duration }} seconds before starting...
+    - name: Parse CSV rows into dictionaries
+      set_fact:
+        all_rows: >-
+          {{
+            csv_lines[1:] | reject('equalto', '') 
+            | map('split', ',') 
+            | map('map', 'trim') 
+            | map('zip', csv_headers) 
+            | map('dict') 
+            | list
+          }}
 
-    - name: Wait until the scheduled cutover time
-      pause:
-        seconds: "{{ wait_duration }}"
-      when: wait_duration > 0
+    - name: Extract valid plan names from CSV
+      set_fact:
+        valid_plan_names: "{{ all_rows | map(attribute='Plan Name') | list | unique }}"
 
-    - name: Cutover each selected plan
+    - name: Validate that all selected plans exist in CSV
+      fail:
+        msg: "The following plan names are not found in the CSV: {{ missing_plans }}"
+      when: missing_plans | length > 0
+      vars:
+        missing_plans: "{{ plan_names_from_survey | difference(valid_plan_names) }}"
+
+    - name: Convert cutover time to epoch
+      set_fact:
+        cutover_epoch: "{{ (cutover_time | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
+
+    - name: Wait until cutover time
+      wait_for:
+        timeout: "{{ cutover_epoch - ansible_date_time.epoch | int }}"
+      when: (cutover_epoch | int) > (ansible_date_time.epoch | int)
+
+    - name: Cutover each plan from survey
       include_tasks: 03_2_patch_cutover_task.yml
-      loop: "{{ plan_names }}"
+      loop: "{{ plan_names_from_survey }}"
       loop_control:
-        loop_var: selected_plan_name
+        loop_var: plan_name
+      vars:
+        plan_name: "{{ plan_name }}"
