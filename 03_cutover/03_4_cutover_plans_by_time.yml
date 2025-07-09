@@ -43,7 +43,15 @@
     - name: Get current epoch (UTC)
       set_fact:
         now_epoch: "{{ lookup('pipe', 'date +%s') | int }}"
-
+    
+    - name: Debug cutover time and epoch
+      debug:
+        msg:
+          - "cutover_time: {{ cutover_time }}"
+          - "cutover_epoch: {{ cutover_epoch }}"
+          - "now_epoch: {{ now_epoch }}"
+          - "timeout: {{ cutover_epoch - now_epoch }}"
+    
     - name: Wait until cutover time
       wait_for:
         timeout: "{{ cutover_epoch - now_epoch }}"
