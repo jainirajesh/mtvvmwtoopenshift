@@ -53,10 +53,10 @@
           - "🕒 Current UTC Epoch: {{ now_epoch }}"
           - "⌛ Timeout (sec): {{ cutover_timeout }}"
     
-   - name: Debug final cutover timeout
-     debug:
-       msg: "🕒 Waiting {{ cutover_timeout | int }} seconds until scheduled cutover..."
-     when: (cutover_timeout | int) > 0
+    - name: Debug final cutover timeout
+      debug:
+        msg: "🕒 Waiting {{ cutover_timeout | int }} seconds until scheduled cutover..."
+      when: (cutover_timeout | int) > 0
 
     - name: Wait until cutover time
       wait_for:
