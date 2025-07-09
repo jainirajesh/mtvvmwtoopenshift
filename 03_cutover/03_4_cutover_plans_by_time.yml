@@ -7,8 +7,8 @@
     csv_file: "../vm_list_to_migrate.csv"
     mtv_namespace: "openshift-mtv"
 
-    # Injected via AAP Survey (do not redefine survey_plan_names here)
-    plan_names: "{{ (survey_plan_names | default('')) | split(',') | map('trim') | list }}"
+    # Plan names from survey input, safely split and trimmed
+    plan_names: "{{ (survey_plan_names | default('') | string) | split(',') | map('trim') | list }}"
 
   tasks:
     - name: Read and parse the CSV file
@@ -35,11 +35,15 @@
 
     - name: Convert cutover_time to epoch (UTC)
       set_fact:
-        cutover_epoch: "{{ (cutover_time | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
+        cutover_epoch: >-
+          {{
+            (cutover_time | string | trim | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp()
+            | float | int
+          }}
 
     - name: Get current epoch time (UTC-safe)
       set_fact:
-        now_epoch: "{{ (now('utc').timestamp() | int) }}"
+        now_epoch: "{{ (now('utc').timestamp() | float | int) }}"
 
     - name: Debug cutover and current time details
       debug:
