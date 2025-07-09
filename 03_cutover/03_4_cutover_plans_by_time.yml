@@ -39,11 +39,11 @@
     - name: Convert cutover_time to epoch
       set_fact:
         cutover_epoch: "{{ (cutover_time | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
-
+    
     - name: Wait until cutover time
       wait_for:
-        timeout: "{{ cutover_epoch - ansible_date_time.epoch | int }}"
-      when: cutover_epoch > (ansible_date_time.epoch | int)
+        timeout: "{{ cutover_epoch - (now().timestamp() | int) }}"
+      when: cutover_epoch > (now().timestamp() | int)
 
     - name: Cutover each validated plan
       include_tasks: include/03_2_patch_cutover_task.yml
