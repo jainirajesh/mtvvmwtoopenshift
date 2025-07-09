@@ -4,7 +4,7 @@
   gather_facts: false
 
   vars:
-    csv_file: "vm_list_to_migrate.csv"
+    csv_file: "../vm_list_to_migrate.csv"
     mtv_namespace: "openshift-mtv"
     user_input_plan_names: "{{ plan_names | default('') }}"
 
