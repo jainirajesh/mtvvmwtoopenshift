@@ -11,7 +11,7 @@
     survey_plan_names: "{{ survey_plan_names | default('') }}"  # e.g., "lin-plan-00002,win-plan-02"
     cutover_time: "{{ cutover_time | default('') }}"            # e.g., "2025-07-09T08:30:00Z"
 
-    plan_names: "{{ survey_plan_names.split(',') | map('trim') | list }}"
+    plan_names: "{{ (survey_plan_names | default('')) | split(',') | map('trim') | list }}"
 
   tasks:
     - name: Read and parse the CSV file
