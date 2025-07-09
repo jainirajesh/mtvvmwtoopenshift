@@ -1,0 +1,38 @@
+---
+- name: Cutover Multiple Migration Plans at Scheduled Time
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    # These come from the survey
+    survey_input_plan_names: "{{ survey_plan_names | default('') }}"             # e.g. ["win-plan-001", "lin-plan-002"]
+    plan_names: "{{ survey_input_plan_names.split(',') | map('trim') | list }}"
+    cutover_time: ""                                                             # e.g. 2025-07-09T08:30:00Z
+
+  tasks:
+    - name: Convert input time to timestamp (seconds)
+      set_fact:
+        cutover_ts: "{{ (cutover_time | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
+        current_ts: "{{ ansible_date_time.epoch | int }}"
+
+    - name: Calculate wait time
+      set_fact:
+        wait_duration: "{{ cutover_ts - current_ts }}"
+
+    - name: Print Scheduled Cutover Info
+      debug:
+        msg: >-
+          The following plans will be cutover at {{ cutover_time }}:
+          {{ plan_names | join(', ') }}
+          Waiting {{ wait_duration }} seconds before starting...
+
+    - name: Wait until the scheduled cutover time
+      pause:
+        seconds: "{{ wait_duration }}"
+      when: wait_duration > 0
+
+    - name: Cutover each selected plan
+      include_tasks: 03_2_patch_cutover_task.yml
+      loop: "{{ plan_names }}"
+      loop_control:
+        loop_var: selected_plan_name
