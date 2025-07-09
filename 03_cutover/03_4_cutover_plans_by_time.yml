@@ -32,18 +32,18 @@
     - name: Extract final list of filtered unique plans
       set_fact:
         filtered_plans: "{{ filtered_vms | map(attribute='Plan Name') | unique | list }}"
-
+    
     - name: Convert cutover_time to epoch (UTC)
       set_fact:
-        cutover_epoch: >-
-          {{
-            (cutover_time | string | trim | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp()
-            | float | int
-          }}
+        cutover_epoch: "{{ (cutover_time | string | trim | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | float | int }}"
 
     - name: Get current epoch time (UTC-safe)
       set_fact:
         now_epoch: "{{ (now('utc').timestamp() | float | int) }}"
+
+    - name: Calculate timeout duration
+      set_fact:
+        cutover_timeout: "{{ (cutover_epoch | int) - (now_epoch | int) }}"
 
     - name: Debug cutover and current time details
       debug:
@@ -51,12 +51,12 @@
           - "📅 Cutover Time (UTC): {{ cutover_time }}"
           - "⏱️ Cutover Epoch: {{ cutover_epoch }}"
           - "🕒 Current UTC Epoch: {{ now_epoch }}"
-          - "⌛ Timeout (sec): {{ cutover_epoch - now_epoch }}"
+          - "⌛ Timeout (sec): {{ cutover_timeout }}"
 
     - name: Wait until cutover time
       wait_for:
-        timeout: "{{ cutover_epoch - now_epoch }}"
-      when: cutover_epoch > now_epoch
+        timeout: "{{ cutover_timeout }}"
+      when: cutover_timeout > 0
 
     - name: Get all Migration CRs in the namespace
       kubernetes.core.k8s_info:
