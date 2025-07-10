@@ -2,15 +2,15 @@
   hosts: localhost
   gather_facts: false
 
-  #vars_files:
-  #  - ../vars.yaml
-  vars:
-    migration_file: "{{ migration_file | default('../vm_list_to_migrate.csv') }}"
+  vars_files:
+    - ../vars.yaml
+  #vars:
+  #  migration_file: "{{ migration_file | default('../vm_list_to_migrate.csv') }}"
 
   tasks:
-    - name: Read Migration file content (base64)
+    - name: Read CSV content (base64)
       slurp:
-        src: "{{ migration_file }}"
+        src: ../vm_list_to_migrate.csv
       register: raw_csv
 
     - name: Decode and split CSV into lines
@@ -20,7 +20,7 @@
     - name: Extract CSV headers
       set_fact:
         csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
-
+   
     - name: Parse each row into a dictionary
       set_fact:
         all_rows: "{{ all_rows | default([]) + [dict(csv_headers | zip(row.split(',') | map('trim') | list))] }}"
