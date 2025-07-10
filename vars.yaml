@@ -10,12 +10,9 @@ source_provider_uid: "853a87c8-da62-48e6-9fdf-ab5f5614389a"
 
 destination_provider_name: "host"
 destination_provider_uid: "cfd1b453-2705-41b9-bb3a-85fd005c3a48"
-selected_vm_id: "vm-30730"
-selected_vm_name: "rhel-8"
 
 network_map_name: "test-networkmap"
 storage_map_name: "test-storagemap"
-plan_name: "{{ selected_vm_name }}-vmware-test"
 
 source_networkmap: "CPMS-External"
 source_networkmap_id: dvportgroup-1008
@@ -25,6 +22,3 @@ target_networkmap: "nad"
 source_storagemap: "vSAN-Datastore"          # (for display or info)
 source_storagemap_id: datastore-22          # ✅ critical: used in YAML
 target_storage: lvms-vg1
-
-#source_storagemap: "vSAN-Datastore"
-#target_storagemap: "lvms-vg1"
