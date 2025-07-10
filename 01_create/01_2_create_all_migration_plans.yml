@@ -5,7 +5,7 @@
   #vars_files:
   #  - ../vars.yaml
   vars:
-  migration_file: "{{ migration_file | default('../vm_list_to_migrate.csv') }}"
+    migration_file: "{{ migration_file | default('../vm_list_to_migrate.csv') }}"
 
   tasks:
     - name: Read Migration file content (base64)
