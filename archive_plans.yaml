@@ -1,0 +1,20 @@
+---
+- name: Archive AAP Migration Plan
+  hosts: localhost
+  gather_facts: false
+  vars:
+    controller_hostname: "https://api.snocp3.ngcs-lab.local:6443"
+    controller_username: "kubeadmin"
+    controller_password: "Numdp-h59mf-3ytED-9VSqt"
+    export_file_path: "/tmp/"
+
+  tasks:
+    - name: Archive the migration plan by name
+      ansible.controller.export:
+        controller_host: "{{ controller_hostname }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: false
+        export_file: "{{ archive_dir }}/{{ plan_name }}_archive.tar.gz"
+        plans:
+          - "{{ plan_name }}"
