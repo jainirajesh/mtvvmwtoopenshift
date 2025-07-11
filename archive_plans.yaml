@@ -1,20 +1,14 @@
----
-- name: Archive AAP Migration Plan
+- name: Archive AAP configuration using controller CLI
   hosts: localhost
   gather_facts: false
   vars:
-    controller_hostname: "https://api.snocp3.ngcs-lab.local:6443"
-    controller_username: "kubeadmin"
-    controller_password: "Numdp-h59mf-3ytED-9VSqt"
-    archive_dir: "/tmp"         
-
+    archive_dir: "/tmp"  # or set this from survey too
   tasks:
-    - name: Archive the migration plan by name
-      ansible.controller.export:
-        controller_host: "{{ controller_hostname }}"
-        controller_username: "{{ controller_username }}"
-        controller_password: "{{ controller_password }}"
-        validate_certs: false
-        export_file: "{{ archive_dir }}/{{ plan_name }}_archive.tar.gz"
-        plans:
-          - "{{ plan_name }}"
+    - name: Export plan using controller-migrate CLI
+      ansible.builtin.command: >
+        ansible-controller-migrate export
+        --controller-url https://api.snocp3.ngcs-lab.local:6443
+        --username kubeadmin
+        --password Numdp-h59mf-3ytED-9VSqt
+        --output-path {{ archive_dir }}/{{ plan_name }}_archive.tar.gz
+        --output-path {{ archive_dir }}/{{ plan_name }}_archive.tar.gz
