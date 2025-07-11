@@ -6,7 +6,7 @@
     controller_hostname: "https://api.snocp3.ngcs-lab.local:6443"
     controller_username: "kubeadmin"
     controller_password: "Numdp-h59mf-3ytED-9VSqt"
-    export_file_path: "/tmp/"
+    archive_dir: "/tmp"         
 
   tasks:
     - name: Archive the migration plan by name
