@@ -5,7 +5,7 @@
   retries: 20
   delay: 30
   vars:
-    csv_file: "r_vm_list_to_migrate.csv"
+    csv_file: "vm_list_to_migrate.csv"
     mtv_namespace: "openshift-mtv"
 - name: Start Migration Plan after sync time reached
   kubernetes.core.k8s:
