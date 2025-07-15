@@ -25,7 +25,7 @@
     namespace: "{{ mtv_namespace }}"
   register: latest_migration_status
   retries: 150
-  delay: 15
+  delay: 20
   until: >-
     (
       latest_migration_status.resources
