@@ -17,7 +17,7 @@
   set_fact:
     latest_migration: "{{ matching_migrations[0] }}"
 
-- name: Wait for migration to reach CopyingPaused for plan {{ plan_name }}
+- name: Wait for cutover to complete the Disk Transfer for plan {{ plan_name }}
   kubernetes.core.k8s_info:
     api_version: forklift.konveyor.io/v1beta1
     kind: Migration
@@ -25,7 +25,7 @@
     namespace: "{{ mtv_namespace }}"
   register: latest_migration_status
   retries: 150
-  delay: 10
+  delay: 15
   until: >-
     (
       latest_migration_status.resources
