@@ -20,7 +20,7 @@
     kind: Migration
     namespace: "{{ mtv_namespace }}"
   register: migration_object
-  retries: 10
+  retries: 20
   delay: 5
   until: >
     migration_object.resources | selectattr('spec.plan.name', 'equalto', plan_name) | list | length > 0
@@ -38,7 +38,7 @@
 
 - name: Wait a few seconds for status propagation
   pause:
-    seconds: 10
+    seconds: 20
 
 - name: Show final migration CR name
   debug:
