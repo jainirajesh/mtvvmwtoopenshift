@@ -4,7 +4,7 @@
   gather_facts: false
 
   vars:
-    csv_file: "../vm_list_to_migrate.csv"
+    csv_file: "../vm_list_to_migrate_by_time.csv"
     mtv_namespace: "openshift-mtv"
 
     # Plan names from survey input, safely split and trimmed
