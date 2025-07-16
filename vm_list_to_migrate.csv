@@ -1,7 +1,4 @@
 Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS,Plan Name,Target Namespace,Target Storage,Cold or Warm,Keep IP,Sync Time 
 1,ubuntu-demo-01,vm-31968,1,group-1,1,prod,Ubuntu Linux (64-bit),lin-plan-16741,linux-ns16,lvms-vg15,warm,yes,2025-07-16 13:56:00
-2,ubuntu-demo-02,vm-31970,1,group-1,1,prod,Ubuntu Linux (64-bit),lin-plan-16741,linux-ns16,lvms-vg15,warm,yes,2025-07-16 13:46:00
-3,ubuntu-demo-03,vm-31972,1,group-1,1,prod,Ubuntu Linux (64-bit),lin-plan-16751,linux-ns16,lvms-vg15,warm,yes,2025-07-16 13:56:00
-4,win-demo-01,vm-31973,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-16752,win-ns16,lvms-vg15,cold,no,2025-07-16 13:57:00
-5,win-demo-02,vm-31975,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-16741,win-ns16,lvms-vg15,warm,yes,2025-07-16 13:57:00
-6,win-demo-03,vm-31977,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-16741,win-ns16,lvms-vg15,warm,yes,2025-07-16 13:57:00
+2,win-demo-01,vm-31973,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-16752,win-ns16,lvms-vg15,cold,no,2025-07-16 13:57:00
+3,win-demo-02,vm-31975,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-16741,win-ns16,lvms-vg15,warm,yes,2025-07-16 13:57:00
