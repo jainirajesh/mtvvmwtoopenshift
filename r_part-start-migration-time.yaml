@@ -2,8 +2,8 @@
   command: date -u +%Y-%m-%dT%H:%M:%S
   register: current_time_cmd
   until: (current_time_cmd.stdout | to_datetime('%Y-%m-%dT%H:%M:%S')) >= (item['Sync Time'] | to_datetime('%Y-%m-%d %H:%M:%S'))
-  retries: 20
-  delay: 30
+  retries: 30
+  delay: 15
   vars:
     csv_file: "vm_list_to_migrate.csv"
     mtv_namespace: "openshift-mtv"
