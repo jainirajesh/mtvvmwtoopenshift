@@ -11,9 +11,12 @@
   set_fact:
     latest_migration: "{{ matching_migrations[0] | default({}) }}"
 
-- name: Check terminal status from migration conditions
+- name: Set migration conditions fact
   set_fact:
     migration_conditions: "{{ latest_migration.status.conditions | default([]) }}"
+
+- name: Check terminal status from migration conditions
+  set_fact:
     migration_succeeded: "{{ migration_conditions | selectattr('type', 'equalto', 'Succeeded') | selectattr('status', 'equalto', 'True') | list | length > 0 }}"
     migration_failed: "{{ migration_conditions | selectattr('type', 'equalto', 'Failed') | selectattr('status', 'equalto', 'True') | list | length > 0 }}"
 
