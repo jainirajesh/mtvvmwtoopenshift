@@ -17,38 +17,53 @@
   set_fact:
     latest_migration: "{{ matching_migrations[0] }}"
 
-- name: Wait for cutover to complete the Disk Transfer for plan {{ plan_name }}
-  kubernetes.core.k8s_info:
-    api_version: forklift.konveyor.io/v1beta1
-    kind: Migration
-    name: "{{ latest_migration.metadata.name }}"
-    namespace: "{{ mtv_namespace }}"
-  register: latest_migration_status
-  retries: 150
-  delay: 20
-  until: >-
-    (
-      latest_migration_status.resources
-      | map(attribute='status')
-      | selectattr('vms', 'defined')
-      | map(attribute='vms')
-      | flatten
-      | selectattr('phase', 'equalto', 'CopyingPaused')
-      | list
-      | length
-    ) > 0
+- name: Get current phase of the latest migration {{ latest_migration.metadata.name }}
+  set_fact:
+    latest_phase: >-
+      {{
+        latest_migration.status.vms | default([]) | map(attribute='phase') | list | first | default('Unknown')
+      }}
 
-- name: Patch cutover time on latest migration {{ latest_migration.metadata.name }}
-  kubernetes.core.k8s_json_patch:
-    kind: Migration
-    api_version: forklift.konveyor.io/v1beta1
-    name: "{{ latest_migration.metadata.name }}"
-    namespace: "{{ mtv_namespace }}"
-    patch:
-      - op: add
-        path: /spec/cutover
-        value: "{{ cutover_time }}"
-
-- name: ✅ Patched cutover on migration for {{ plan_name }}
+- name: 🚫 Skip cutover for completed or failed migration {{ plan_name }}
   debug:
-    msg: "Cutover patch applied on Migration '{{ latest_migration.metadata.name }}' for Plan '{{ plan_name }}'"
+    msg: "⚠️ Skipping cutover for '{{ plan_name }}' as migration is already in terminal phase '{{ latest_phase }}'."
+  when: latest_phase in ['Succeeded', 'Failed']
+
+- block:
+    - name: Wait for migration to reach CopyingPaused phase for plan {{ plan_name }}
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Migration
+        name: "{{ latest_migration.metadata.name }}"
+        namespace: "{{ mtv_namespace }}"
+      register: latest_migration_status
+      retries: 150
+      delay: 20
+      until: >-
+        (
+          latest_migration_status.resources
+          | map(attribute='status')
+          | selectattr('vms', 'defined')
+          | map(attribute='vms')
+          | flatten
+          | selectattr('phase', 'equalto', 'CopyingPaused')
+          | list
+          | length
+        ) > 0
+
+    - name: Patch cutover time on latest migration {{ latest_migration.metadata.name }}
+      kubernetes.core.k8s_json_patch:
+        kind: Migration
+        api_version: forklift.konveyor.io/v1beta1
+        name: "{{ latest_migration.metadata.name }}"
+        namespace: "{{ mtv_namespace }}"
+        patch:
+          - op: add
+            path: /spec/cutover
+            value: "{{ cutover_time }}"
+
+    - name: ✅ Patched cutover on migration for {{ plan_name }}
+      debug:
+        msg: "✅ Cutover patch applied on Migration '{{ latest_migration.metadata.name }}' for Plan '{{ plan_name }}'"
+
+  when: latest_phase not in ['Succeeded', 'Failed']
