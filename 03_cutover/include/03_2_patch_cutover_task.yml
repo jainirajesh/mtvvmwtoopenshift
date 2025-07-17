@@ -1,4 +1,3 @@
----
 - name: Set matching migrations for {{ plan_name }}
   set_fact:
     matching_migrations: >-
@@ -8,37 +7,31 @@
         | sort(attribute='metadata.creationTimestamp', reverse=True)
       }}
 
-- name: Check if matching migration exists for {{ plan_name }}
-  fail:
-    msg: "❌ No Migration CR found for Plan '{{ plan_name }}'. Please ensure Sync has been successfully run before Cutover."
-  when: matching_migrations | length == 0
-
 - name: Set latest migration object for {{ plan_name }}
   set_fact:
-    latest_migration: "{{ matching_migrations[0] }}"
+    latest_migration: "{{ matching_migrations[0] | default({}) }}"
 
-- name: Get current phase of the latest migration {{ latest_migration.metadata.name }}
+- name: Check terminal status from migration conditions
   set_fact:
-    latest_phase: >-
-      {{
-        latest_migration.status.vms | default([]) | map(attribute='phase') | list | first | default('Unknown')
-      }}
+    migration_conditions: "{{ latest_migration.status.conditions | default([]) }}"
+    migration_succeeded: "{{ migration_conditions | selectattr('type', 'equalto', 'Succeeded') | selectattr('status', 'equalto', 'True') | list | length > 0 }}"
+    migration_failed: "{{ migration_conditions | selectattr('type', 'equalto', 'Failed') | selectattr('status', 'equalto', 'True') | list | length > 0 }}"
 
-- name: 🚫 Skip cutover for completed or failed migration {{ plan_name }}
+- name: 🚫 Skipping cutover patch for terminal plan {{ plan_name }}
   debug:
-    msg: "⚠️ Skipping cutover for '{{ plan_name }}' as migration is already in terminal phase '{{ latest_phase }}'."
-  when: latest_phase in ['Succeeded', 'Failed']
+    msg: "⚠️ Plan '{{ plan_name }}' is already completed (Succeeded/Failed). Skipping patch."
+  when: migration_succeeded or migration_failed
 
 - block:
-    - name: Wait for migration to reach CopyingPaused phase for plan {{ plan_name }}
+    - name: ⏳ Wait for migration to reach CopyingPaused phase for {{ plan_name }}
       kubernetes.core.k8s_info:
         api_version: forklift.konveyor.io/v1beta1
         kind: Migration
         name: "{{ latest_migration.metadata.name }}"
         namespace: "{{ mtv_namespace }}"
       register: latest_migration_status
-      retries: 150
-      delay: 20
+      retries: 100
+      delay: 15
       until: >-
         (
           latest_migration_status.resources
@@ -51,10 +44,10 @@
           | length
         ) > 0
 
-    - name: Patch cutover time on latest migration {{ latest_migration.metadata.name }}
+    - name: Patch cutover time on migration {{ latest_migration.metadata.name }}
       kubernetes.core.k8s_json_patch:
-        kind: Migration
         api_version: forklift.konveyor.io/v1beta1
+        kind: Migration
         name: "{{ latest_migration.metadata.name }}"
         namespace: "{{ mtv_namespace }}"
         patch:
@@ -62,8 +55,8 @@
             path: /spec/cutover
             value: "{{ cutover_time }}"
 
-    - name: ✅ Patched cutover on migration for {{ plan_name }}
+    - name: ✅ Patched cutover for {{ plan_name }}
       debug:
-        msg: "✅ Cutover patch applied on Migration '{{ latest_migration.metadata.name }}' for Plan '{{ plan_name }}'"
+        msg: "✅ Cutover patch applied on plan {{ plan_name }} using migration {{ latest_migration.metadata.name }}"
 
-  when: latest_phase not in ['Succeeded', 'Failed']
+  when: not (migration_succeeded or migration_failed)
