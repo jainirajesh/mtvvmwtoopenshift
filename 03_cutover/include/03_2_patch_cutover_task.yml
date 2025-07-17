@@ -26,7 +26,7 @@
   when: migration_succeeded or migration_failed
 
 - block:
-    - name: ⏳ Wait for migration to reach CopyingPaused phase for {{ plan_name }}
+    - name: ⏳ Wait for migration to Complete the Disk Transfer Sync phase for {{ plan_name }}
       kubernetes.core.k8s_info:
         api_version: forklift.konveyor.io/v1beta1
         kind: Migration
