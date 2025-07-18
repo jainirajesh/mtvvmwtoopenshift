@@ -1,0 +1,20 @@
+---
+- name: Set plan_name and compute cutover epoch
+  set_fact:
+    plan_name: "{{ plan_entry['Plan Name'] }}"
+    plan_cutover_epoch: >-
+      {{
+        (plan_entry.cutover_time | trim | to_datetime('%Y-%m-%d %H:%M:%S')).timestamp() | float | int
+      }}
+    current_epoch: "{{ (now('utc').timestamp() | float | int) }}"
+    timeout_seconds: "{{ plan_cutover_epoch - current_epoch }}"
+
+- name: Wait until cutover time for {{ plan_name }}
+  wait_for:
+    timeout: "{{ timeout_seconds | int }}"
+  when: timeout_seconds > 0
+
+- name: Run patch cutover for {{ plan_name }}
+  include_tasks: include/03_2_patch_cutover_task.yml
+  vars:
+    plan_name: "{{ plan_name }}"
