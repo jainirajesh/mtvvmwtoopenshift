@@ -44,27 +44,11 @@
         var: plan_cutover_list
 
     - name: Process each plan for cutover timing and patch
-      vars:
-        plan_entry: "{{ item }}"
-        plan_name: "{{ plan_entry['Plan Name'] }}"
-        cutover_time_str: "{{ plan_entry['cutover_time'] | trim }}"
-      block:
-        - name: Convert cutover time string to epoch (UTC)
-          set_fact:
-            plan_cutover_epoch: "{{ (cutover_time_str | to_datetime('%Y-%m-%d %H:%M:%S')).timestamp() | int }}"
-            current_epoch: "{{ (ansible_date_time.iso8601 | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
-            timeout_seconds: "{{ plan_cutover_epoch - current_epoch }}"
-
-        - name: Wait until cutover time for {{ plan_name }} (if needed)
-          wait_for:
-            timeout: "{{ timeout_seconds }}"
-          when: timeout_seconds > 0
-
-        - name: Cutover plan {{ plan_name }}
-          include_tasks: include/03_2_patch_cutover_task.yml
-          vars:
-            plan_name: "{{ plan_name }}"
-            mtv_namespace: "{{ mtv_namespace }}"
+      include_tasks: include/cutover_per_plan.yml
       loop: "{{ plan_cutover_list }}"
       loop_control:
-        loop_var: item
+        loop_var: plan_entry
+      vars:
+        plan_name: "{{ plan_entry['Plan Name'] }}"
+        cutover_time_str: "{{ plan_entry['cutover_time'] | trim }}"
+        mtv_namespace: "{{ mtv_namespace }}"
