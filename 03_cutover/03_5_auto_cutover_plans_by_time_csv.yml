@@ -1,0 +1,72 @@
+---
+- name: Auto cutover plans based on CSV-scheduled time per plan
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    csv_file: "../vm_list_to_migrate.csv"
+    mtv_namespace: "openshift-mtv"
+
+  tasks:
+    - name: Read CSV content (base64)
+      slurp:
+        src: "{{ csv_file }}"
+      register: raw_csv
+
+    - name: Decode and split CSV into lines
+      set_fact:
+        csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
+
+    - name: Extract CSV headers
+      set_fact:
+        csv_headers: "{{ csv_lines[0].split(',') | map('trim') | list }}"
+
+    - name: Parse each row into a dictionary
+      set_fact:
+        all_rows: "{{ all_rows | default([]) + [dict(csv_headers | zip(row.split(',') | map('trim') | list))] }}"
+      loop: "{{ csv_lines[1:] }}"
+      loop_control:
+        loop_var: row
+      when: row.strip() != ''
+
+    - name: Extract unique plan and cutover time mapping
+      set_fact:
+        plan_cutover_list: >-
+          {{
+            all_rows
+            | map(attribute='Plan Name')
+            | unique
+            | map('extract', all_rows | selectattr('Plan Name', 'equalto', _))
+            | map('first')
+            | map('combine', [{'cutover_time': _['Cutover Time']}])
+            | list
+          }}
+
+    - name: Debug plan and cutover mapping
+      debug:
+        var: plan_cutover_list
+
+    - name: Iterate and cutover per plan
+      loop: "{{ plan_cutover_list }}"
+      loop_control:
+        loop_var: plan_entry
+      block:
+        - name: Convert plan cutover time to epoch (UTC)
+          set_fact:
+            plan_name: "{{ plan_entry['Plan Name'] }}"
+            plan_cutover_epoch: >-
+              {{
+                (plan_entry.cutover_time | trim | to_datetime('%Y-%m-%d %H:%M:%S')).timestamp() | float | int
+              }}
+            current_epoch: "{{ (now('utc').timestamp() | float | int) }}"
+            timeout_seconds: "{{ plan_cutover_epoch - current_epoch }}"
+
+        - name: Wait until cutover time for {{ plan_name }}
+          wait_for:
+            timeout: "{{ timeout_seconds | int }}"
+          when: timeout_seconds > 0
+
+        - name: Cutover the plan {{ plan_name }}
+          include_tasks: include/03_2_patch_cutover_task.yml
+          vars:
+            plan_name: "{{ plan_name }}"
