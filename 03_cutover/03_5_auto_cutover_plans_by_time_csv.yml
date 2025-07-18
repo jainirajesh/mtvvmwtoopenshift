@@ -33,14 +33,13 @@
       set_fact:
         plan_cutover_list: >-
           {{
-            all_rows
-            | map(attribute='Plan Name')
-            | unique
-            | map('extract', all_rows | selectattr('Plan Name', 'equalto', _))
-            | map('first')
-            | map('combine', [{'cutover_time': _['Cutover Time']}])
-            | list
+            [
+              dict(row, cutover_time=row['Cutover Time'])
+              for plan_name in (all_rows | map(attribute='Plan Name') | unique)
+              for row in (all_rows | selectattr('Plan Name', 'equalto', plan_name) | list)[:1]
+            ]
           }}
+
 
     - name: Debug plan and cutover mapping
       debug:
