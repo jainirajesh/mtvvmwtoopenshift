@@ -43,16 +43,12 @@
       debug:
         var: plan_cutover_list
 
-    - name: Iterate over each plan and schedule cutover by time
-      loop: "{{ plan_cutover_list }}"
-      loop_control:
-        loop_var: plan_entry
+    - name: Process each plan for cutover timing and patch
+      vars:
+        plan_entry: "{{ item }}"
+        plan_name: "{{ plan_entry['Plan Name'] }}"
+        cutover_time_str: "{{ plan_entry['cutover_time'] | trim }}"
       block:
-        - name: Set plan variables
-          set_fact:
-            plan_name: "{{ plan_entry['Plan Name'] }}"
-            cutover_time_str: "{{ plan_entry['cutover_time'] | trim }}"
-
         - name: Convert cutover time string to epoch (UTC)
           set_fact:
             plan_cutover_epoch: "{{ (cutover_time_str | to_datetime('%Y-%m-%d %H:%M:%S')).timestamp() | int }}"
@@ -69,3 +65,6 @@
           vars:
             plan_name: "{{ plan_name }}"
             mtv_namespace: "{{ mtv_namespace }}"
+      loop: "{{ plan_cutover_list }}"
+      loop_control:
+        loop_var: item
