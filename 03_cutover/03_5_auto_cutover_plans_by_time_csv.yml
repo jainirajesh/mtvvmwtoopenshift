@@ -29,24 +29,43 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Extract unique plan and cutover time mapping
+    - name: Extract unique plans with cutover times
       set_fact:
-        plan_cutover_list: >-
-          {{
-            [
-              dict(row, cutover_time=row['Cutover Time'])
-              for plan_name in (all_rows | map(attribute='Plan Name') | unique)
-              for row in (all_rows | selectattr('Plan Name', 'equalto', plan_name) | list)[:1]
-            ]
-          }}
+        plan_cutover_list: "{{ 
+          [
+            dict(row, cutover_time=row['Cutover Time']) 
+            for plan_name in (all_rows | map(attribute='Plan Name') | unique)
+            for row in (all_rows | selectattr('Plan Name', 'equalto', plan_name) | list)[:1]
+          ]
+        }}"
 
-
-    - name: Debug plan and cutover mapping
+    - name: Debug plan_cutover_list
       debug:
         var: plan_cutover_list
 
-    - name: Iterate and cutover per plan
-      include_tasks: include/cutover_per_plan.yml
+    - name: Iterate over each plan and schedule cutover by time
       loop: "{{ plan_cutover_list }}"
       loop_control:
         loop_var: plan_entry
+      block:
+        - name: Set plan variables
+          set_fact:
+            plan_name: "{{ plan_entry['Plan Name'] }}"
+            cutover_time_str: "{{ plan_entry['cutover_time'] | trim }}"
+
+        - name: Convert cutover time string to epoch (UTC)
+          set_fact:
+            plan_cutover_epoch: "{{ (cutover_time_str | to_datetime('%Y-%m-%d %H:%M:%S')).timestamp() | int }}"
+            current_epoch: "{{ (ansible_date_time.iso8601 | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
+            timeout_seconds: "{{ plan_cutover_epoch - current_epoch }}"
+
+        - name: Wait until cutover time for {{ plan_name }} (if needed)
+          wait_for:
+            timeout: "{{ timeout_seconds }}"
+          when: timeout_seconds > 0
+
+        - name: Cutover plan {{ plan_name }}
+          include_tasks: include/03_2_patch_cutover_task.yml
+          vars:
+            plan_name: "{{ plan_name }}"
+            mtv_namespace: "{{ mtv_namespace }}"
