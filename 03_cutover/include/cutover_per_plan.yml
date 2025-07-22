@@ -1,7 +1,7 @@
-- name: Convert cutover time string to epoch (UTC)
+- name: Convert cutover time string to epoch and calculate timeout
   set_fact:
     plan_cutover_epoch: "{{ (cutover_time_str | to_datetime('%Y-%m-%d %H:%M:%S')).timestamp() | int }}"
-    current_epoch: "{{ (ansible_date_time.iso8601 | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
+    current_epoch: "{{ lookup('pipe', 'date -u +%s') | int }}"
     timeout_seconds: "{{ plan_cutover_epoch - current_epoch }}"
 
 - name: Wait until cutover time for {{ plan_name }} (if needed)
