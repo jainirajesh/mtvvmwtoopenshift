@@ -1,0 +1,14 @@
+---
+- name: Check filesystem usage on VMs in plan {{ plan_group.key }}
+  ansible.builtin.shell: df -h /
+  delegate_to: "{{ item.ip }}"
+  loop: "{{ plan_group.value.vms }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: fs_results
+  ignore_errors: yes
+
+- name: Show filesystem info for VMs
+  debug:
+    msg: "Filesystem info for VM {{ item.item.name }}:\n{{ item.stdout }}"
+  loop: "{{ fs_results.results }}"
