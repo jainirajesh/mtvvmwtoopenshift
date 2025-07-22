@@ -9,7 +9,7 @@
 
 - name: Calculate timeout seconds for {{ plan_name }}
   set_fact:
-    timeout_seconds: "{{ plan_cutover_epoch - current_epoch }}"
+    timeout_seconds: "{{ (plan_cutover_epoch | int) - (current_epoch | int) }}"
 
 - name: Debug timing for {{ plan_name }}
   debug:
