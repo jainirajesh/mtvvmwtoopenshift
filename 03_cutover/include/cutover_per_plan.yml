@@ -1,12 +1,20 @@
-- name: Debug cutover time string before conversion for {{ plan_name }}
-  debug:
-    msg: "cutover_time_str='{{ cutover_time_str }}'"
-
-- name: Convert cutover time string to epoch and calculate timeout
+- name: Normalize cutover time string for {{ plan_name }}
   set_fact:
-    plan_cutover_epoch: "{{ (cutover_time_str | strptime('%Y-%m-%d %H:%M:%S')).timestamp() | int }}"
-    current_epoch: "{{ lookup('pipe', 'date -u +%s') | int }}"
+    cutover_time_iso: "{{ cutover_time_str.replace(' ', 'T') + 'Z' }}"
+
+- name: Convert cutover_time to epoch (UTC) for {{ plan_name }}
+  set_fact:
+    plan_cutover_epoch: "{{ (cutover_time_iso | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
+    current_epoch: "{{ now('utc').timestamp() | int }}"
     timeout_seconds: "{{ plan_cutover_epoch - current_epoch }}"
+
+- name: Debug timing for {{ plan_name }}
+  debug:
+    msg:
+      - "Cutover time (ISO): {{ cutover_time_iso }}"
+      - "Cutover epoch: {{ plan_cutover_epoch }}"
+      - "Current epoch: {{ current_epoch }}"
+      - "Timeout seconds: {{ timeout_seconds }}"
 
 - name: Wait until cutover time for {{ plan_name }} (if needed)
   wait_for:
