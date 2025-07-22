@@ -21,10 +21,8 @@
 
 - name: Wait until cutover time for {{ plan_name }} (if needed)
   wait_for:
-    timeout: "{{ timeout_seconds }}"
-  when:
-    - timeout_seconds is defined
-    - timeout_seconds > 0
+    timeout: "{{ timeout_seconds | int }}"
+  when: (timeout_seconds | int) > 0
 
 - name: Cutover plan {{ plan_name }}
   include_tasks: include/03_2_patch_cutover_task.yml
