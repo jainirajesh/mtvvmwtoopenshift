@@ -1,0 +1,11 @@
+---
+- name: Create a success marker file for plan {{ plan_group.key }}
+  ansible.builtin.file:
+    path: "/tmp/migration_plan_{{ plan_group.key | regex_replace(' ', '_') }}_{{ '%Y%m%d%H%M%S' | strftime }}.done"
+    state: touch
+    mode: '0644'
+  delegate_to: localhost
+
+- name: Notify success for plan {{ plan_group.key }}
+  debug:
+    msg: "Created marker file for migration plan {{ plan_group.key }}"
