@@ -2,7 +2,7 @@
   kubernetes.core.k8s_info:
     api_version: forklift.konveyor.io/v1beta1
     kind: Migration
-    namespace: "openshift-mtv"
+    namespace: "{{ mtv_namespace }}"
   register: all_migrations
 
 - name: Set matching migrations for {{ current_plan_name }}
@@ -38,7 +38,7 @@
         api_version: forklift.konveyor.io/v1beta1
         kind: Migration
         name: "{{ latest_migration.metadata.name }}"
-        namespace: "openshift-mtv"
+        namespace: "{{ mtv_namespace }}"
       register: latest_migration_status
       retries: 100
       delay: 15
@@ -59,7 +59,7 @@
         api_version: forklift.konveyor.io/v1beta1
         kind: Migration
         name: "{{ latest_migration.metadata.name }}"
-        namespace: "openshift-mtv"
+        namespace: "{{ mtv_namespace }}"
         patch:
           - op: add
             path: /spec/cutover
