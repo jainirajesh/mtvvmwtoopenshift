@@ -2,10 +2,11 @@
 - name: Auto cutover plans based on CSV-scheduled time per plan
   hosts: localhost
   gather_facts: false 
-
+  
+  vars_files:
+    - ../vars.yaml
   vars:
     csv_file: "../vm_list_to_migrate.csv"
-    mtv_namespace: "openshift-mtv"
 
   tasks:
     - name: Read CSV content (base64)
