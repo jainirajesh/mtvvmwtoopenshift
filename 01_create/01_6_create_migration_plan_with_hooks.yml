@@ -53,7 +53,7 @@
         label: "{{ item.key }}"
 
     - name: Run pre-create hook tasks for plan {{ plan_group.key }}
-      import_tasks: includes/hooks/pre_create.yml
+      include_tasks: includes/hooks/pre_create.yml
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: plan_group
@@ -67,7 +67,7 @@
         plan_group: "{{ plan_group }}"
 
     - name: Run post-create hook tasks for plan {{ plan_group.key }}
-      import_tasks: includes/hooks/post_create.yml
+      include_tasks: includes/hooks/post_create.yml
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: plan_group
