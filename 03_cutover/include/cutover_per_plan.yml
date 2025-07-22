@@ -1,15 +1,19 @@
----
+- name: Debug cutover time string before conversion for {{ plan_name }}
+  debug:
+    msg: "cutover_time_str='{{ cutover_time_str }}'"
+
 - name: Convert cutover time string to epoch and calculate timeout
   set_fact:
-    plan_cutover_epoch: "{{ (cutover_time_str | to_datetime('%Y-%m-%d %H:%M:%S')).timestamp() | int }}"
+    plan_cutover_epoch: "{{ (cutover_time_str | strptime('%Y-%m-%d %H:%M:%S')).timestamp() | int }}"
     current_epoch: "{{ lookup('pipe', 'date -u +%s') | int }}"
     timeout_seconds: "{{ plan_cutover_epoch - current_epoch }}"
-  when: cutover_time_str is defined and cutover_time_str | length > 0
 
 - name: Wait until cutover time for {{ plan_name }} (if needed)
   wait_for:
     timeout: "{{ timeout_seconds }}"
-  when: timeout_seconds is defined and timeout_seconds > 0
+  when:
+    - timeout_seconds is defined
+    - timeout_seconds > 0
 
 - name: Cutover plan {{ plan_name }}
   include_tasks: include/03_2_patch_cutover_task.yml
