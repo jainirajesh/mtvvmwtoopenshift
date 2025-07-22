@@ -6,7 +6,8 @@
   loop_control:
     label: "{{ item.name }}"
   vars:
-    ansible_user: ubuntu
+    ansible_user: ocp
+    ansible_password: "Password@123"
   register: fs_results
   ignore_errors: yes
 
