@@ -6,6 +6,9 @@
   set_fact:
     plan_cutover_epoch: "{{ (cutover_time_iso | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() | int }}"
     current_epoch: "{{ now('utc').timestamp() | int }}"
+
+- name: Calculate timeout seconds for {{ plan_name }}
+  set_fact:
     timeout_seconds: "{{ plan_cutover_epoch - current_epoch }}"
 
 - name: Debug timing for {{ plan_name }}
