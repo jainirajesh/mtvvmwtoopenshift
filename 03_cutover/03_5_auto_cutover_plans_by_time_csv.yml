@@ -1,7 +1,7 @@
 ---
 - name: Auto cutover plans based on CSV-scheduled time per plan
   hosts: localhost
-  gather_facts: false
+  gather_facts: false 
 
   vars:
     csv_file: "../vm_list_to_migrate.csv"
@@ -15,7 +15,7 @@
 
     - name: Decode and split CSV into lines
       set_fact:
-        csv_lines: "{{ raw_csv.content | b64decode | regex_findall('.*') }}"
+        csv_lines: "{{ raw_csv.content | b64decode | splitlines() }}"
 
     - name: Extract CSV headers
       set_fact:
@@ -29,15 +29,17 @@
         loop_var: row
       when: row.strip() != ''
 
-    - name: Extract unique plans with cutover times
+    - name: Build unique plan list with cutover time
       set_fact:
-        plan_cutover_list: "{{ 
-          [
-            dict(row, cutover_time=row['Cutover Time']) 
-            for plan_name in (all_rows | map(attribute='Plan Name') | unique)
-            for row in (all_rows | selectattr('Plan Name', 'equalto', plan_name) | list)[:1]
-          ]
-        }}"
+        plan_cutover_list: >-
+          {{
+            all_rows
+            | groupby('Plan Name')
+            | map('last')              # group value
+            | map('first')             # first entry per group
+            | map('combine', {})       # ensure dict structure
+            | list
+          }}
 
     - name: Debug plan_cutover_list
       debug:
@@ -50,5 +52,5 @@
         loop_var: plan_entry
       vars:
         plan_name: "{{ plan_entry['Plan Name'] }}"
-        cutover_time_str: "{{ plan_entry['cutover_time'] | trim }}"
+        cutover_time_str: "{{ plan_entry['Cutover Time'] | trim }}"
         mtv_namespace: "{{ mtv_namespace }}"
