@@ -1,13 +1,13 @@
-- name: Set matching migrations for {{ plan_name }}
+- name: Set matching migrations for {{ current_plan_name }}
   set_fact:
     matching_migrations: >-
       {{
         all_migrations.resources
-        | selectattr('spec.plan.name', 'equalto', plan_name)
+        | selectattr('spec.plan.name', 'equalto', current_plan_name)
         | sort(attribute='metadata.creationTimestamp', reverse=True)
       }}
 
-- name: Set latest migration object for {{ plan_name }}
+- name: Set latest migration object for {{ current_plan_name }}
   set_fact:
     latest_migration: "{{ matching_migrations[0] | default({}) }}"
 
@@ -20,13 +20,13 @@
     migration_succeeded: "{{ migration_conditions | selectattr('type', 'equalto', 'Succeeded') | selectattr('status', 'equalto', 'True') | list | length > 0 }}"
     migration_failed: "{{ migration_conditions | selectattr('type', 'equalto', 'Failed') | selectattr('status', 'equalto', 'True') | list | length > 0 }}"
 
-- name: 🚫 Skipping cutover patch for terminal plan {{ plan_name }}
+- name: 🚫 Skipping cutover patch for terminal plan {{ current_plan_name }}
   debug:
-    msg: "⚠️ Plan '{{ plan_name }}' is already completed (Succeeded/Failed). Skipping patch."
+    msg: "⚠️ Plan '{{ current_plan_name }}' is already completed (Succeeded/Failed). Skipping patch."
   when: migration_succeeded or migration_failed
 
 - block:
-    - name: ⏳ Wait for migration to Complete the Disk Transfer Sync phase for {{ plan_name }}
+    - name: ⏳ Wait for migration to Complete the Disk Transfer Sync phase for {{ current_plan_name }}
       kubernetes.core.k8s_info:
         api_version: forklift.konveyor.io/v1beta1
         kind: Migration
@@ -58,8 +58,8 @@
             path: /spec/cutover
             value: "{{ cutover_time }}"
 
-    - name: ✅ Patched cutover for {{ plan_name }}
+    - name: ✅ Patched cutover for {{ current_plan_name }}
       debug:
-        msg: "✅ Cutover patch applied on plan {{ plan_name }} using migration {{ latest_migration.metadata.name }}"
+        msg: "✅ Cutover patch applied on plan {{ current_plan_name }} using migration {{ latest_migration.metadata.name }}"
 
   when: not (migration_succeeded or migration_failed)
