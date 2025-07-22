@@ -35,9 +35,9 @@
           {{
             all_rows
             | groupby('Plan Name')
-            | map('last')              # group value
-            | map('first')             # first entry per group
-            | map('combine', {})       # ensure dict structure
+            | map('last')              
+            | map('first')             
+            | map('combine', {}) 
             | list
           }}
 
