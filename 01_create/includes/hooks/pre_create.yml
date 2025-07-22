@@ -5,6 +5,8 @@
   loop: "{{ plan_group.value.vms }}"
   loop_control:
     label: "{{ item.name }}"
+  vars:
+    ansible_user: ubuntu
   register: fs_results
   ignore_errors: yes
 
