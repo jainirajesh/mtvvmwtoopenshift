@@ -15,7 +15,7 @@
 
     - name: Decode and split CSV into lines
       set_fact:
-        csv_lines: "{{ raw_csv.content | b64decode | splitlines() }}"
+        csv_lines: "{{ raw_csv.content | b64decode | regex_findall('([^\n]+)') }}"
 
     - name: Extract CSV headers
       set_fact:
