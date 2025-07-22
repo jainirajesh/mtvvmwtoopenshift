@@ -1,3 +1,6 @@
+vars_files:
+  - ../vars.yaml
+
 - name: Get all migrations in the namespace
   kubernetes.core.k8s_info:
     api_version: forklift.konveyor.io/v1beta1
