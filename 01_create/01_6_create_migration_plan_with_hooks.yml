@@ -34,40 +34,40 @@
       loop_control:
         label: "{{ item['Plan Name'] }}"
 
-    - name: Construct VM objects and update plans_with_vms with is_warm flag
+    - name: Construct VM objects and update plans_with_vms with is_warm flag and hooks
       set_fact:
         plans_with_vms: "{{ plans_with_vms | default({}) | combine({ item.key: {
           'vms': vm_list,
           'rows': item.value,
-          'is_warm': (item.value[0]['Cold or Warm'] | lower == 'warm')
+          'is_warm': (item.value[0]['Cold or Warm'] | lower == 'warm'),
+          'hooks': [
+            {
+              'hookType': 'pre-migration',
+              'ansiblePlaybook': '../hooks/pre_create.yml',
+              'name': 'PreMigrationHook'
+            },
+            {
+              'hookType': 'post-migration',
+              'ansiblePlaybook': '../hooks/post_create.yml',
+              'name': 'PostMigrationHook'
+            }
+          ]
         } }) }}"
       vars:
         vm_list: >-
           {%- set result = [] -%}
           {%- for row in item.value -%}
-          {%-   set _ = result.append({ 'name': row['RHOS Name'], 'id': row['VM ID'], 'ip': row['IP Address'] }) -%}
+          {%-   set _ = result.append({ 'name': row['RHOS Name'], 'id': row['VM ID'] }) -%}
           {%- endfor -%}
           {{ result }}
       loop: "{{ plans_dict | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
 
-    - name: Run pre-create hook tasks for plan {{ plan_group.key }}
-      include_tasks: includes/hooks/pre_create.yml
-      loop: "{{ plans_with_vms | dict2items }}"
-      loop_control:
-        loop_var: plan_group
-
-    - name: Loop over each plan group and create them
+    - name: Loop over each plan group and create them with hooks
       include_tasks: includes/create_plan_standard.yml
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: plan_group
       vars:
         plan_group: "{{ plan_group }}"
-
-    - name: Run post-create hook tasks for plan {{ plan_group.key }}
-      include_tasks: includes/hooks/post_create.yml
-      loop: "{{ plans_with_vms | dict2items }}"
-      loop_control:
-        loop_var: plan_group
