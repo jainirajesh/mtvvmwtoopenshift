@@ -31,3 +31,7 @@
     mtv_namespace: "{{ mtv_namespace }}"
     cutover_time: "{{ cutover_time_iso }}"
   when: plan_name is defined
+
+- name: Debug mtv_namespace before migration info task
+  debug:
+    var: mtv_namespace
