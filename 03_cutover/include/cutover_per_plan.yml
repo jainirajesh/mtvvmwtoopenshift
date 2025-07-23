@@ -4,7 +4,7 @@
       - "📌 Plan: {{ plan_name }}"
       - "📅 Cutover Time: {{ cutover_time_str }}"
       - "📂 MTV Namespace: {{ mtv_namespace }}"
-      - "🕐 Current Epoch Time: {{ now('utc').timestamp() | int }}""
+      - "🕐 Current Epoch Time: {{ now('utc').timestamp() | int }}"
 
 - name: Normalize cutover time string for {{ plan_name }}
   set_fact:
