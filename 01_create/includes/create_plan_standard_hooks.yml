@@ -98,6 +98,11 @@
         migrateSharedDisks: true
         warm: "{{ plan_group.value.is_warm }}"
         vms: "{{ plan_group.value.vms }}"
+        hooks:                          # <-- Added this block
+          pre:
+            - name: "prehook-{{ plan_group.key | lower }}"
+          post:
+            - name: "posthook-{{ plan_group.key | lower }}"
 
 - name: Read PreHook playbook from file
   slurp:
