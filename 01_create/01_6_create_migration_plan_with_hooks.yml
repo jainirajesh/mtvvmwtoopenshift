@@ -65,7 +65,7 @@
         label: "{{ item.key }}"
 
     - name: Loop over each plan group and create them with hooks
-      include_tasks: includes/create_plan_standard.yml
+      include_tasks: includes/create_plan_standard_hooks.yml
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: plan_group
