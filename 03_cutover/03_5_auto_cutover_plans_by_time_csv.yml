@@ -54,5 +54,4 @@
       vars:
         plan_name: "{{ plan_entry['Plan Name'] }}"
         cutover_time_str: "{{ plan_entry['Cutover Time'] | default('') | trim }}"
-        mtv_namespace: "{{ mtv_namespace }}"
       when: plan_entry['Cutover Time'] is defined and plan_entry['Cutover Time'] | trim | length > 0
