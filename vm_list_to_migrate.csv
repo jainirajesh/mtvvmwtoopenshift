@@ -1,2 +1,4 @@
 Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS,Plan Name,Target Namespace,Target Storage,Cold or Warm,Keep IP,Sync Time,Cutover Time
-1,ubuntu-demo-01,vm-31968,1,group-1,1,prod,Ubuntu Linux (64-bit),ubuntu-plan-abxyzz,linux-nsx,lvms-vg1,warm,yes,2025-07-23 07:40:00,2025-07-23 07:44:00
+1,ubuntu-demo-01,vm-31968,1,group-1,1,prod,Ubuntu Linux (64-bit),ubuntu-plan-a,linux-nsa,lvms-vg1,warm,yes,2025-07-23 08:11:00,2025-07-23 08:14:30
+2,ubuntu-demo-02,vm-32068,1,group-1,1,prod,Ubuntu Linux (64-bit),ubuntu-plan-b,linux-nsb,lvms-vg1,warm,yes,2025-07-23 08:11:00,2025-07-23 08:15:00
+
