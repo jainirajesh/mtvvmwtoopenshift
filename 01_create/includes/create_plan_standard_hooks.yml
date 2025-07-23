@@ -139,7 +139,7 @@
         playbook: "{{ posthook_playbook_file.content | b64decode }}"
         targetNamespace: "{{ mtv_namespace }}"
 
-- name: Enable hooks in Migration Plan
+- name: Enable hooks in Migration Plan via annotations
   kubernetes.core.k8s:
     state: patched
     kind: Plan
@@ -148,16 +148,10 @@
     namespace: "{{ mtv_namespace }}"
     merge_type: merge
     definition:
-      spec:
-        hooks:
-          - step: PreHook
-            ref:
-              name: "prehook-{{ plan_group.key | lower }}"
-              namespace: "{{ mtv_namespace }}"
-          - step: PostHook
-            ref:
-              name: "posthook-{{ plan_group.key | lower }}"
-              namespace: "{{ mtv_namespace }}"
+      metadata:
+        annotations:
+          migration.konveyor.io/pre-hook: "prehook-{{ plan_group.key | lower }}"
+          migration.konveyor.io/post-hook: "posthook-{{ plan_group.key | lower }}"
 
 - name: Wait until Plan is Ready
   kubernetes.core.k8s_info:
