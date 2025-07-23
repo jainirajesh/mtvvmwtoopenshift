@@ -36,6 +36,5 @@
   include_tasks: include/03_2_patch_cutover_task.yml
   vars:
     current_plan_name: "{{ plan_name }}"
-    mtv_namespace: "{{ mtv_namespace }}"
     cutover_time: "{{ cutover_time_iso }}"
   when: plan_name is defined
