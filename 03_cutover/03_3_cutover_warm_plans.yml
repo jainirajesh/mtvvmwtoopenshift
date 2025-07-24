@@ -42,6 +42,8 @@
 
     - name: Cutover each warm plan using block task
       include_tasks: include/03_2_patch_cutover_task.yml
+      vars:
+        current_plan_name: "{{ warm_plan_names }}"
       loop: "{{ warm_plan_names }}"
       loop_control:
         loop_var: plan_name
