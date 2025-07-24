@@ -98,11 +98,6 @@
         migrateSharedDisks: true
         warm: "{{ plan_group.value.is_warm }}"
         vms: "{{ plan_group.value.vms }}"
-        hooks:                          # Hook references here
-          pre:
-            - name: "prehook-{{ plan_group.key | lower }}"
-          post:
-            - name: "posthook-{{ plan_group.key | lower }}"
 
 - name: Read PreHook playbook from file
   slurp:
@@ -120,8 +115,9 @@
         namespace: "{{ mtv_namespace }}"
       spec:
         image: quay.io/konveyor/hook-runner:latest
-        playbook: "{{ prehook_playbook_file.content }}"   # base64 encoded content
-        # Removed 'custom' and 'targetNamespace'
+        custom: true
+        playbook: "{{ prehook_playbook_file.content | b64decode }}"
+        targetNamespace: "{{ mtv_namespace }}"
 
 - name: Read PostHook playbook from file
   slurp:
@@ -139,8 +135,9 @@
         namespace: "{{ mtv_namespace }}"
       spec:
         image: quay.io/konveyor/hook-runner:latest
-        playbook: "{{ posthook_playbook_file.content }}"   # base64 encoded content
-        # Removed 'custom' and 'targetNamespace'
+        custom: true
+        playbook: "{{ posthook_playbook_file.content | b64decode }}"
+        targetNamespace: "{{ mtv_namespace }}"
 
 - name: Enable hooks in Migration Plan via annotations
   kubernetes.core.k8s:
