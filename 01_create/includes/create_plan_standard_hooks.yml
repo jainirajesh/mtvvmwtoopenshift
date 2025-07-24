@@ -67,6 +67,9 @@
       metadata:
         name: "{{ plan_group.key }}"
         namespace: "{{ mtv_namespace }}"
+        annotations:
+          migration.konveyor.io/pre-hook: "prehook-{{ plan_group.key | lower }}"
+          migration.konveyor.io/post-hook: "posthook-{{ plan_group.key | lower }}"
       spec:
         provider:
           source:
@@ -98,6 +101,11 @@
         migrateSharedDisks: true
         warm: "{{ plan_group.value.is_warm }}"
         vms: "{{ plan_group.value.vms }}"
+        hooks:
+          pre:
+            - name: "prehook-{{ plan_group.key | lower }}"
+          post:
+            - name: "posthook-{{ plan_group.key | lower }}"
 
 - name: Read PreHook playbook from file
   slurp:
@@ -139,7 +147,7 @@
         playbook: "{{ posthook_playbook_file.content | b64decode }}"
         targetNamespace: "{{ mtv_namespace }}"
 
-- name: Enable hooks in Migration Plan via annotations
+- name: Enable hooks in Migration Plan via annotations (optional if you want separate patch)
   kubernetes.core.k8s:
     state: patched
     kind: Plan
