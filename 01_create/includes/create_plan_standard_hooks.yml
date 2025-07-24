@@ -111,6 +111,7 @@
                   namespace: "{{ mtv_namespace }}"
                 step: PreHook
 
+
 - name: Read PreHook playbook from file
   slurp:
     src: includes/hooks/pre_create.yml
