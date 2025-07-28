@@ -149,3 +149,9 @@
             uid: "{{ plan_uid }}"
             controller: true
             blockOwnerDeletion: true
+
+- name: ✅ Report plan creation to EMS
+  ansible.builtin.shell: >
+    zabbix_sender -z {{ zabbix_server_ip }} -s "Migration Automation" -k ansible.migration.plan.created -o "{{ plan_group.key }}"
+  when: plan_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length > 0
+  delegate_to: localhost
