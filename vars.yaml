@@ -17,6 +17,8 @@ storage_map_name: "test-storagemap"
 source_networkmap: "CPMS-External"
 source_networkmap_id: dvportgroup-1008
 target_network_namespace: "openshift-mtv"
+
+zabbix_server_ip: 193.7.1.225
 target_networkmap: "nad"
 
 source_storagemap: "vSAN-Datastore"          # (for display or info)
