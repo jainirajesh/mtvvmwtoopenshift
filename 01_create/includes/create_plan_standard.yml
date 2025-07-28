@@ -171,27 +171,7 @@
   debug:
     var: zabbix_login
 
-- name: 🔍 Get item ID for plan.created key
-  uri:
-    url: "http://{{ zabbix_server_ip }}/zabbix/api_jsonrpc.php"
-    method: POST
-    headers:
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: "item.get"
-      params:
-        output: ["itemid"]
-        host: "Migration Automation"
-        search:
-          key_: "ansible.migration.plan.created"
-      auth: "{{ zabbix_login.json.result }}"
-      id: 3
-  register: zabbix_item
-  delegate_to: localhost
-
-- name: 📥 Send migration plan name to Zabbix item
+- name: 📥 Send migration plan name to Zabbix item (via history.create)
   uri:
     url: "http://{{ zabbix_server_ip }}/zabbix/api_jsonrpc.php"
     method: POST
@@ -202,7 +182,7 @@
       jsonrpc: "2.0"
       method: "history.create"
       params:
-        - itemid: "{{ zabbix_item.json.result[0].itemid }}"
+        - itemid: "70796"
           clock: "{{ ansible_date_time.epoch }}"
           value: "{{ plan_group.key }}"
           ns: 0
