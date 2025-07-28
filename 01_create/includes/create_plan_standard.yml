@@ -167,6 +167,10 @@
   register: zabbix_login
   delegate_to: localhost
 
+- name: 🐞 Debug login result
+  debug:
+    var: zabbix_login
+
 - name: 📩 Push plan creation to Zabbix (via API)
   uri:
     url: "http://{{ zabbix_server_ip }}/zabbix/api_jsonrpc.php"
