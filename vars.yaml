@@ -18,9 +18,12 @@ source_networkmap: "CPMS-External"
 source_networkmap_id: dvportgroup-1008
 target_network_namespace: "openshift-mtv"
 
-zabbix_server_ip: 193.7.1.225
 target_networkmap: "nad"
 
 source_storagemap: "vSAN-Datastore"          # (for display or info)
 source_storagemap_id: datastore-22          # ✅ critical: used in YAML
 target_storage: lvms-vg1
+
+zabbix_server_ip: "193.1.1.225"
+zabbix_api_user: "Admin"
+zabbix_api_pass: "zabbix"
