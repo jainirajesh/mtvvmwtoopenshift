@@ -150,8 +150,37 @@
             controller: true
             blockOwnerDeletion: true
 
-- name: ✅ Report plan creation to EMS
-  ansible.builtin.shell: >
-    zabbix_sender -z {{ zabbix_server_ip }} -s "Migration Automation" -k ansible.migration.plan.created -o "{{ plan_group.key }}"
-  when: plan_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length > 0
+- name: 🔐 Authenticate to EMS API
+  uri:
+    url: "http://{{ zabbix_server_ip }}/zabbix/api_jsonrpc.php"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: "user.login"
+      params:
+        user: "{{ zabbix_api_user }}"
+        password: "{{ zabbix_api_pass }}"
+      id: 1
+  register: zabbix_login
+  delegate_to: localhost
+
+- name: 📩 Push plan creation to Zabbix (via API)
+  uri:
+    url: "http://{{ zabbix_server_ip }}/zabbix/api_jsonrpc.php"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: "sender.data"
+      params:
+        host: "Migration Automation"
+        key: "ansible.migration.plan.created"
+        value: "{{ plan_group.key }}"
+      auth: "{{ zabbix_login.json.result }}"
+      id: 2
   delegate_to: localhost
