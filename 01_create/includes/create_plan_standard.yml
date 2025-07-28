@@ -171,7 +171,7 @@
   debug:
     var: zabbix_login
 
-- name: 📥 Send migration plan name to Zabbix item (via history.create)
+- name: 📥 Send migration plan name with UTC time to Zabbix item (via history.create)
   uri:
     url: "http://{{ zabbix_server_ip }}/zabbix/api_jsonrpc.php"
     method: POST
@@ -183,8 +183,8 @@
       method: "history.create"
       params:
         - itemid: "70796"
-          clock: "{{ ansible_date_time.epoch }}"
-          value: "{{ plan_group.key }}"
+          clock: "{{ lookup('pipe', 'date -u +%s') }}"
+          value: "Plan '{{ plan_group.key }}' created at {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
           ns: 0
       auth: "{{ zabbix_login.json.result }}"
       id: 4
