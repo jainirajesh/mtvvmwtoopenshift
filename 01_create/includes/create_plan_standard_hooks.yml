@@ -95,7 +95,7 @@
       spec:
         image: quay.io/konveyor/hook-runner:latest
         custom: true
-        playbook: "{{ posthook_playbook_file.content | b64decode }}"
+        playbook: "{{ posthook_playbook_file.content }}"
         targetNamespace: "{{ mtv_namespace }}"
 
 - name: Create migration Plan
