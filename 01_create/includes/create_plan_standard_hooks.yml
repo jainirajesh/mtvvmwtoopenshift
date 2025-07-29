@@ -98,7 +98,7 @@
         playbook: "{{ posthook_playbook_file.content | b64decode }}"
         targetNamespace: "{{ mtv_namespace }}"
 
-- name: Create Migration Plan
+- name: Create migration Plan
   kubernetes.core.k8s:
     state: present
     definition:
@@ -110,6 +110,7 @@
         annotations:
           migration.konveyor.io/pre-hook: "prehook-{{ plan_group.key | lower }}"
           migration.konveyor.io/post-hook: "posthook-{{ plan_group.key | lower }}"
+          populatorLabels: "True"
       spec:
         provider:
           source:
@@ -136,24 +137,23 @@
             name: "storagemap-{{ plan_group.key | lower }}"
             namespace: "{{ mtv_namespace }}"
         targetNamespace: "{{ plan_group.value.rows[0]['Target Namespace'] }}"
-        pvcNameTemplateUseGenerateName: true
         preserveStaticIPs: true
-        migrateSharedDisks: true
         warm: "{{ plan_group.value.is_warm }}"
+        pvcNameTemplateUseGenerateName: true
         vms: >-
           {{
             plan_group.value.vms | map('combine', {
               'hooks': [
                 {
                   'hook': {
-                    'name': "prehook-{{ plan_group.key | lower }}",
+                    'name': 'prehook-' ~ plan_group.key | lower,
                     'namespace': mtv_namespace
                   },
                   'step': 'PreHook'
                 },
                 {
                   'hook': {
-                    'name': "posthook-{{ plan_group.key | lower }}",
+                    'name': 'posthook-' ~ plan_group.key | lower,
                     'namespace': mtv_namespace
                   },
                   'step': 'PostHook'
