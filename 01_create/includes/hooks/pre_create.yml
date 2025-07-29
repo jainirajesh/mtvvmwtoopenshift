@@ -1,17 +1,26 @@
----
-- name: Check filesystem usage on VMs in plan {{ plan_group.key }}
-  ansible.builtin.shell: df -h /
-  delegate_to: "{{ item.ip }}"
-  loop: "{{ plan_group.value.vms }}"
-  loop_control:
-    label: "{{ item.name }}"
-  vars:
-    ansible_user: ocp
-    ansible_password: "Password@123"
-  register: fs_results
-  ignore_errors: yes
+apiVersion: forklift.konveyor.io/v1beta1
+kind: Hook
+spec:
+  image: quay.io/konveyor/hook-runner
+  playbook: |
+    - name: Check filesystem usage on VMs
+      hosts: all
+      gather_facts: no
+      tasks:
+        - name: Check filesystem usage
+          ansible.builtin.shell: df -h /
+          delegate_to: "{{ item.ip }}"
+          loop: "{{ plan_group.value.vms }}"
+          loop_control:
+            label: "{{ item.name }}"
+          vars:
+            ansible_user: ocp
+            ansible_password: "Password@123"
+          register: fs_results
+          ignore_errors: yes
 
-- name: Show filesystem info for VMs
-  debug:
-    msg: "Filesystem info for VM {{ item.item.name }}:\n{{ item.stdout }}"
-  loop: "{{ fs_results.results }}"
+        - name: Show filesystem info
+          debug:
+            msg: |
+              Filesystem info for VM {{ item.item.name }}:
+              {{ item.stdout }}
