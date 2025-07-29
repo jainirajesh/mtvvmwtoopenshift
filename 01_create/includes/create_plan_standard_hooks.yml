@@ -221,6 +221,24 @@
             controller: true
             blockOwnerDeletion: true
 
+- name: 🔐 Authenticate to Zabbix API
+  uri:
+    url: "http://{{ zabbix_url }}/zabbix/api_jsonrpc.php"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: "user.login"
+      params:
+        user: "{{ zabbix_api_user }}"
+        password: "{{ zabbix_api_pass }}"
+      id: 1
+    status_code: 200
+    return_content: true
+  register: zabbix_login
+
 - name: Push plan creation event to Zabbix
   uri:
     url: "http://{{ zabbix_url }}/zabbix/api_jsonrpc.php"
