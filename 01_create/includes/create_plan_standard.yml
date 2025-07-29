@@ -149,3 +149,42 @@
             uid: "{{ plan_uid }}"
             controller: true
             blockOwnerDeletion: true
+
+- name: 🔐 Authenticate to Zabbix API
+  uri:
+    url: "http://{{ zabbix_url }}/zabbix/api_jsonrpc.php"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: "user.login"
+      params:
+        user: "{{ zabbix_api_user }}"
+        password: "{{ zabbix_api_pass }}"
+      id: 1
+    status_code: 200
+    return_content: true
+  register: zabbix_login
+
+- name: Push plan creation event to Zabbix
+  uri:
+    url: "http://{{ zabbix_url }}/zabbix/api_jsonrpc.php"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: "history.create"
+      params:
+        - itemid: "70796"
+          clock: "{{ lookup('pipe', 'date -u +%s') }}"
+          value: "✅ Plan '{{ plan_group.key }}' created successfully at {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+          ns: 0
+      auth: "{{ zabbix_login.json.result }}"
+      id: 2
+    status_code: 200
+    return_content: true
+
