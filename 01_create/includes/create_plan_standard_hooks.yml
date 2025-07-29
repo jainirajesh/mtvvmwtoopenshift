@@ -169,9 +169,17 @@
     name: "{{ plan_group.key }}"
     namespace: "{{ mtv_namespace }}"
   register: plan_info
-  retries: 10
+  retries: 20
   delay: 5
-  until: plan_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length > 0
+  until: >
+    plan_info.resources | length > 0 and
+    ('status' in plan_info.resources[0]) and
+    (
+      plan_info.resources[0].status.conditions |
+      selectattr('type', 'equalto', 'Ready') |
+      selectattr('status', 'equalto', 'True') |
+      list | length > 0
+    )
 
 - name: Get Plan UID
   set_fact:
