@@ -75,7 +75,7 @@
       spec:
         image: quay.io/konveyor/hook-runner:latest
         custom: true
-        playbook: "{{ prehook_playbook_file.content | b64decode }}"
+        playbook: "{{ prehook_playbook_file.content }}"
         targetNamespace: "{{ mtv_namespace }}"
 
 - name: Read PostHook playbook from file
