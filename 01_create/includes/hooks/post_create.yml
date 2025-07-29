@@ -1,85 +1,74 @@
-apiVersion: forklift.konveyor.io/v1beta1
-kind: Hook
-metadata:
-  name: prehook-ubuntu-plan-23071
-  namespace: openshift-mtv
-spec:
-  image: quay.io/konveyor/hook-runner
-  playbook: |
-    ---
-    - name: Main
-      hosts: localhost
-      tasks:
-        - name: Load Plan
-          include_vars:
-            file: plan.yml 
-            name: plan
+---
+- name: Main
+  hosts: localhost
+  tasks:
+  - name: Load Plan
+    include_vars:
+      file: plan.yml 
+      name: plan
 
-        - name: Load Workload
-          include_vars:
-            file: workload.yml
-            name: workload
+  - name: Load Workload
+    include_vars:
+      file: workload.yml
+      name: workload
 
-        - name: Get SSH Secret
-          kubernetes.core.k8s_info:
-            api_version: v1
-            kind: Secret
-            name: privkey
-            namespace: openshift-mtv
-          register: ssh_credentials
+  - k8s_info:
+      api_version: v1
+      kind: Secret
+      name: privkey
+      namespace: openshift-mtv
+    register: ssh_credentials
 
-        - name: Debug SSH credentials
-          debug:
-            var: ssh_credentials
+  - name: Debug SSH credentials
+    debug:
+      var: ssh_credentials
 
-        - name: Ensure SSH directory exists
-          file:
-            path: ~/.ssh
-            state: directory
-            mode: '0750'
+  - name: Ensure SSH directory exists
+    file:
+      path: ~/.ssh
+      state: directory
+      mode: 0750
 
-        - name: Create SSH key
-          copy:
-            dest: ~/.ssh/id_rsa
-            content: "{{ ssh_credentials.resources[0].data.key | b64decode }}"
-            mode: '0600'
+  - name: Create SSH key
+    copy:
+      dest: ~/.ssh/id_rsa
+      content: "{{ ssh_credentials.resources[0].data.key | b64decode }}"
+      mode: 0600
 
-        - name: Add VM to inventory
-          add_host:
-            name: "{{ workload.vm.ipaddress }}"
-            ansible_user: root
-            groups: vms
+  - add_host:
+      name: "{{ workload.vm.ipaddress }}"
+      ansible_user: root
+      groups: vms
 
-        - name: Set Workload & Plan fact
-          set_fact:
-            workload: "{{ workload }}"
-            plan: "{{ plan }}"
-        
-        - name: Show Workload info
-          debug:
-            msg: "{{ workload }}"
+  - name: Set Workload & Plan fact
+    set_fact:
+      workload: "{{ workload }}"
+      plan: "{{ plan }}"
+    
+  - name: Show Workload info
+    debug:
+      msg: "{{ workload }}"
 
-        - name: Show Plan Details
-          debug:
-            msg: "{{ plan }}"
+  - name: Show Plan Details
+    debug:
+      msg: "{{ plan }}"
 
-    - name: Execute Tasks on VMs
-      hosts: vms
-      gather_facts: no
-      vars:
-        ansible_ssh_private_key_file: ~/.ssh/id_rsa
-      tasks:
-        - name: Wait for VM to boot
-          wait_for_connection:
-            timeout: 600
+- hosts: vms
+  gather_facts: no
+  vars:
+    ansible_ssh_private_key_file: ~/.ssh/id_rsa
+  tasks:  
+  - name: Wait for VM to boot
+    wait_for_connection:
+      timeout: 600
 
-        - name: Start httpd
-          service:
-            name: httpd
-            state: started
-
-        - name: Create Test File
-          copy:
-            dest: /test2.txt
-            content: "Hello World"
-            mode: '0644'
+  - name: Start httpd
+    service:
+      name: httpd
+      state: started
+      
+  - name: Create Test File
+    copy:
+      dest: /test2.txt
+      content: "Hello World"
+      mode: 0644
