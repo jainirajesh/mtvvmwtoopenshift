@@ -58,6 +58,46 @@
             destination:
               storageClass: "{{ target_storage }}"
 
+- name: Read PreHook playbook from file
+  slurp:
+    src: includes/hooks/pre_create.yml
+  register: prehook_playbook_file
+
+- name: Create PreHook from playbook file
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: forklift.konveyor.io/v1beta1
+      kind: Hook
+      metadata:
+        name: prehook-{{ plan_group.key | lower }}
+        namespace: "{{ mtv_namespace }}"
+      spec:
+        image: quay.io/konveyor/hook-runner:latest
+        custom: true
+        playbook: "{{ prehook_playbook_file.content | b64decode }}"
+        targetNamespace: "{{ mtv_namespace }}"
+
+- name: Read PostHook playbook from file
+  slurp:
+    src: includes/hooks/post_create.yml
+  register: posthook_playbook_file
+
+- name: Create PostHook from playbook file
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: forklift.konveyor.io/v1beta1
+      kind: Hook
+      metadata:
+        name: posthook-{{ plan_group.key | lower }}
+        namespace: "{{ mtv_namespace }}"
+      spec:
+        image: quay.io/konveyor/hook-runner:latest
+        custom: true
+        playbook: "{{ posthook_playbook_file.content | b64decode }}"
+        targetNamespace: "{{ mtv_namespace }}"
+
 - name: Create Migration Plan
   kubernetes.core.k8s:
     state: present
@@ -100,71 +140,27 @@
         preserveStaticIPs: true
         migrateSharedDisks: true
         warm: "{{ plan_group.value.is_warm }}"
-        vms:
-          - hooks:
-              - hook:
-                  name: "posthook-{{ plan_group.key | lower }}"
-                  namespace: openshift-mtv
-                step: PostHook
-              - hook:
-                  name: "prehook-{{ plan_group.key | lower }}"
-                  namespace: openshift-mtv
-                step: PreHook
-        vms: "{{ plan_group.value.vms }}"
-
-- name: Read PreHook playbook from file
-  slurp:
-    src: includes/hooks/pre_create.yml
-  register: prehook_playbook_file
-
-- name: Create PreHook from playbook file
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: forklift.konveyor.io/v1beta1
-      kind: Hook
-      metadata:
-        name: prehook-{{ plan_group.key | lower }}
-        namespace: "{{ mtv_namespace }}"
-      spec:
-        image: quay.io/konveyor/hook-runner:latest
-        custom: true
-        playbook: "{{ prehook_playbook_file.content | b64decode }}"
-        targetNamespace: "{{ mtv_namespace }}"
-
-- name: Read PostHook playbook from file
-  slurp:
-    src: includes/hooks/post_create.yml
-  register: posthook_playbook_file
-
-- name: Create PostHook from playbook file
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: forklift.konveyor.io/v1beta1
-      kind: Hook
-      metadata:
-        name: posthook-{{ plan_group.key | lower }}
-        namespace: "{{ mtv_namespace }}"
-      spec:
-        image: quay.io/konveyor/hook-runner:latest
-        custom: true
-        playbook: "{{ posthook_playbook_file.content | b64decode }}"
-        targetNamespace: "{{ mtv_namespace }}"
-
-- name: Enable hooks in Migration Plan via annotations (optional if you want separate patch)
-  kubernetes.core.k8s:
-    state: patched
-    kind: Plan
-    api_version: forklift.konveyor.io/v1beta1
-    name: "{{ plan_group.key }}"
-    namespace: "{{ mtv_namespace }}"
-    merge_type: merge
-    definition:
-      metadata:
-        annotations:
-          migration.konveyor.io/pre-hook: "prehook-{{ plan_group.key | lower }}"
-          migration.konveyor.io/post-hook: "posthook-{{ plan_group.key | lower }}"
+        vms: >-
+          {{
+            plan_group.value.vms | map('combine', {
+              'hooks': [
+                {
+                  'hook': {
+                    'name': "prehook-{{ plan_group.key | lower }}",
+                    'namespace': mtv_namespace
+                  },
+                  'step': 'PreHook'
+                },
+                {
+                  'hook': {
+                    'name': "posthook-{{ plan_group.key | lower }}",
+                    'namespace': mtv_namespace
+                  },
+                  'step': 'PostHook'
+                }
+              ]
+            }) | list
+          }}
 
 - name: Wait until Plan is Ready
   kubernetes.core.k8s_info:
