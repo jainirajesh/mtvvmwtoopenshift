@@ -168,12 +168,12 @@
     return_content: true
   register: zabbix_login
 
-- name: Push plan creation to Zabbix via HTTP (for trapper item)
+- name: 🆔 Get Zabbix item ID for plan creation
   uri:
     url: "http://{{ zabbix_url }}/zabbix/api_jsonrpc.php"
     method: POST
     headers:
-      Content-Type: "application/json-rpc"
+      Content-Type: "application/json"
     body_format: json
     body:
       jsonrpc: "2.0"
@@ -189,12 +189,12 @@
     return_content: true
   register: get_item
 
-- name: Send plan info via HTTP agent trapper
+- name: 📤 Send plan creation event to Zabbix via HTTP
   uri:
     url: "http://{{ zabbix_url }}/zabbix/api_jsonrpc.php"
     method: POST
     headers:
-      Content-Type: "application/json-rpc"
+      Content-Type: "application/json"
     body_format: json
     body:
       jsonrpc: "2.0"
@@ -203,7 +203,7 @@
         host: "Migration Automation"
         data:
           - key: "ansible.migration.plan.created"
-            value: "Plan '{{ plan_group.key }}' created at {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+            value: "✅ Plan '{{ plan_group.key }}' created at {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
       auth: "{{ zabbix_login.json.result }}"
       id: 3
     status_code: 200
