@@ -1,2 +1,2 @@
 Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS,Plan Name,Target Namespace,Target Storage,Cold or Warm,Keep IP,Sync Time 
-1,rhel-8,vm-30818,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),rhel2130601,rhelns01,lvms-vg1,cold,yes
+1,rhel-8,vm-30818,1,group-1,1,prod,Red Hat Enterprise Linux 8 (64-bit),rhel2130601,rhelns01,lvms-vg1,cold,yes,2025-06-25 10:30:00
