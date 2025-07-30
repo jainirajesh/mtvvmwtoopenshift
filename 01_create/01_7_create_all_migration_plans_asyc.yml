@@ -54,21 +54,124 @@
 
     - name: Create migration plans in parallel (without task include)
       block:
-        - name: Create migration plan for each group
-          include_tasks: includes/create_plan_standard.yml
-          loop: "{{ plans_with_vms | dict2items }}"
-          loop_control:
-            loop_var: plan_group
-          vars:
-            plan_group: "{{ plan_group }}"
-          async: 300   # Run tasks asynchronously for 5 minutes
-          poll: 0      # Don't wait for completion immediately
+        - name: Create NetworkMap for {{ plan_group.key | lower }}
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: forklift.konveyor.io/v1beta1
+              kind: NetworkMap
+              metadata:
+                name: "netmap-{{ plan_group.key | lower }}"
+                namespace: "{{ mtv_namespace }}"
+              spec:
+                provider:
+                  source:
+                    apiVersion: forklift.konveyor.io/v1beta1
+                    kind: Provider
+                    name: "{{ source_provider_name }}"
+                    namespace: "{{ mtv_namespace }}"
+                    uid: "{{ source_provider_uid }}"
+                  destination:
+                    apiVersion: forklift.konveyor.io/v1beta1
+                    kind: Provider
+                    name: "{{ destination_provider_name }}"
+                    namespace: "{{ mtv_namespace }}"
+                    uid: "{{ destination_provider_uid }}"
+                map:
+                  - source:
+                      id: "{{ source_networkmap_id }}"
+                    destination:
+                      name: "{{ target_networkmap }}"
+                      namespace: "{{ target_network_namespace }}"
+                      type: multus
+          async: 300
+          poll: 0
+          register: networkmap_job
 
-        - name: Wait for all parallel tasks to complete
+        - name: Create StorageMap for {{ plan_group.key | lower }}
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: forklift.konveyor.io/v1beta1
+              kind: StorageMap
+              metadata:
+                name: "storagemap-{{ plan_group.key | lower }}"
+                namespace: "{{ mtv_namespace }}"
+              spec:
+                provider:
+                  source:
+                    apiVersion: forklift.konveyor.io/v1beta1
+                    kind: Provider
+                    name: "{{ source_provider_name }}"
+                    namespace: "{{ mtv_namespace }}"
+                    uid: "{{ source_provider_uid }}"
+                  destination:
+                    apiVersion: forklift.konveyor.io/v1beta1
+                    kind: Provider
+                    name: "{{ destination_provider_name }}"
+                    namespace: "{{ mtv_namespace }}"
+                    uid: "{{ destination_provider_uid }}"
+                map:
+                  - source:
+                      id: "{{ source_storagemap_id }}"
+                    destination:
+                      storageClass: "{{ target_storage }}"
+          async: 300
+          poll: 0
+          register: storagemap_job
+
+        - name: Create Migration Plan for {{ plan_group.key | lower }}
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: forklift.konveyor.io/v1beta1
+              kind: Plan
+              metadata:
+                name: "{{ plan_group.key }}"
+                namespace: "{{ mtv_namespace }}"
+              spec:
+                provider:
+                  source:
+                    apiVersion: forklift.konveyor.io/v1beta1
+                    kind: Provider
+                    name: "{{ source_provider_name }}"
+                    namespace: "{{ mtv_namespace }}"
+                    uid: "{{ source_provider_uid }}"
+                  destination:
+                    apiVersion: forklift.konveyor.io/v1beta1
+                    kind: Provider
+                    name: "{{ destination_provider_name }}"
+                    namespace: "{{ mtv_namespace }}"
+                    uid: "{{ destination_provider_uid }}"
+                map:
+                  network:
+                    apiVersion: forklift.konveyor.io/v1beta1
+                    kind: NetworkMap
+                    name: "netmap-{{ plan_group.key | lower }}"
+                    namespace: "{{ mtv_namespace }}"
+                  storage:
+                    apiVersion: forklift.konveyor.io/v1beta1
+                    kind: StorageMap
+                    name: "storagemap-{{ plan_group.key | lower }}"
+                    namespace: "{{ mtv_namespace }}"
+                targetNamespace: "{{ plan_group.value.rows[0]['Target Namespace'] }}"
+                pvcNameTemplateUseGenerateName: true
+                preserveStaticIPs: true
+                migrateSharedDisks: true
+                warm: "{{ plan_group.value.is_warm }}"
+                vms: "{{ plan_group.value.vms }}"
+          async: 300
+          poll: 0
+          register: plan_job
+
+        - name: Wait for all tasks to complete
           async_status:
             jid: "{{ item.ansible_job_id }}"
-          loop: "{{ ansible_jobs }}"
+          loop:
+            - "{{ networkmap_job }}"
+            - "{{ storagemap_job }}"
+            - "{{ plan_job }}"
           register: job_results
-          until: job_results.results | selectattr('finished', 'defined') | length == ansible_jobs | length
+          until: job_results.results | selectattr('finished', 'defined') | length == 3
           retries: 10
           delay: 10
