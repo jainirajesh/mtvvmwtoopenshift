@@ -52,21 +52,23 @@
       loop_control:
         label: "{{ item.key }}"
 
-    - name: Create migration plans in parallel
-      include_tasks: includes/create_plan_standard.yml
-      loop: "{{ plans_with_vms | dict2items }}"
-      loop_control:
-        loop_var: plan_group
-      vars:
-        plan_group: "{{ plan_group }}"
-      async: 3000  # Run tasks asynchronously for 50 minutes
-      poll: 0     # Don't wait for completion immediately
+    - name: Create migration plans in parallel (without task include)
+      block:
+        - name: Create migration plan for each group
+          include_tasks: includes/create_plan_standard.yml
+          loop: "{{ plans_with_vms | dict2items }}"
+          loop_control:
+            loop_var: plan_group
+          vars:
+            plan_group: "{{ plan_group }}"
+          async: 300   # Run tasks asynchronously for 5 minutes
+          poll: 0      # Don't wait for completion immediately
 
-    - name: Wait for all parallel tasks to complete
-      async_status:
-        jid: "{{ item.ansible_job_id }}"
-      loop: "{{ ansible_jobs }}"
-      register: job_results
-      until: job_results.results | selectattr('finished', 'defined') | length == ansible_jobs | length
-      retries: 10
-      delay: 10
+        - name: Wait for all parallel tasks to complete
+          async_status:
+            jid: "{{ item.ansible_job_id }}"
+          loop: "{{ ansible_jobs }}"
+          register: job_results
+          until: job_results.results | selectattr('finished', 'defined') | length == ansible_jobs | length
+          retries: 10
+          delay: 10
