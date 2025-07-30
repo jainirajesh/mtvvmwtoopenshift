@@ -36,6 +36,10 @@
         content: "{{ ssh_credentials.resources[0].data.key | b64decode }}"
         mode: 0600
 
+    - name: Debug OS Family
+      debug:
+        var: ansible_facts.os_family
+
     - add_host:
         name: "{{ workload.vm.ipaddress }}"
         ansible_user: "{{ 'Administrator' if ansible_facts.os_family == 'Windows' else ('ocp' if ansible_facts.os_family == 'Debian' else 'root') }}"
