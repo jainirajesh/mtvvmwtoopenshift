@@ -2,82 +2,94 @@
 - name: Main
   hosts: localhost
   tasks:
-  - name: Load Plan
-    include_vars:
-      file: plan.yml 
-      name: plan
+    - name: Load Plan
+      include_vars:
+        file: plan.yml 
+        name: plan
 
-  - name: Load Workload
-    include_vars:
-      file: workload.yml
-      name: workload
+    - name: Load Workload
+      include_vars:
+        file: workload.yml
+        name: workload
 
-  - k8s_info:
-      api_version: v1
-      kind: Secret
-      name: privkey
-      namespace: openshift-mtv
-    register: ssh_credentials
+    - k8s_info:
+        api_version: v1
+        kind: Secret
+        name: privkey
+        namespace: openshift-mtv
+      register: ssh_credentials
 
-  - name: Debug SSH credentials
-    debug:
-      var: ssh_credentials
+    - name: Debug SSH credentials
+      debug:
+        var: ssh_credentials
 
-  - name: Ensure SSH directory exists
-    file:
-      path: ~/.ssh
-      state: directory
-      mode: 0750
+    - name: Ensure SSH directory exists
+      file:
+        path: ~/.ssh
+        state: directory
+        mode: 0750
 
-  - name: Create SSH key
-    copy:
-      dest: ~/.ssh/id_rsa
-      content: "{{ ssh_credentials.resources[0].data.key | b64decode }}"
-      mode: 0600
+    - name: Create SSH key
+      copy:
+        dest: ~/.ssh/id_rsa
+        content: "{{ ssh_credentials.resources[0].data.key | b64decode }}"
+        mode: 0600
 
-  - add_host:
-      name: "{{ workload.vm.ipaddress }}"
-      ansible_user: ocp
-      groups: vms
+    - add_host:
+        name: "{{ workload.vm.ipaddress }}"
+        ansible_user: "{{ 'Administrator' if ansible_facts.os_family == 'Windows' else ('ocp' if ansible_facts.os_family == 'Debian' else 'root') }}"
+        groups: vms
 
-  - name: Set Workload & Plan fact
-    set_fact:
-      workload: "{{ workload }}"
-      plan: "{{ plan }}"
+    - name: Set Workload & Plan fact
+      set_fact:
+        workload: "{{ workload }}"
+        plan: "{{ plan }}"
 
-  - name: Show Workload info
-    debug:
-      msg: "{{ workload }}"
+    - name: Show Workload info
+      debug:
+        msg: "{{ workload }}"
 
-  - name: Show Plan Details
-    debug:
-      msg: "{{ plan }}"
+    - name: Show Plan Details
+      debug:
+        msg: "{{ plan }}"
 
 - hosts: vms
   vars:
     ansible_ssh_private_key_file: ~/.ssh/id_rsa
 
   tasks:
-  - name: Create Test File for Ubuntu
-    copy:
-      dest: /tmp/pre_test_ubuntu.txt
-      content: "This is a test file on Ubuntu"
-      mode: 0644
-    when: ansible_facts.os_family == "Debian"
+    - name: Create Test File for Ubuntu
+      copy:
+        dest: /tmp/pre_test_ubuntu.txt
+        content: "This is a test file on Ubuntu"
+        mode: 0644
+      when: ansible_facts.os_family == "Debian"
 
-  - name: Create Test File for RHEL
-    copy:
-      dest: /tmp/pre_test_rhel.txt
-      content: "This is a test file on RHEL"
-      mode: 0644
-    when: ansible_facts.os_family == "RedHat"
+    - name: Create Test File for RHEL
+      copy:
+        dest: /tmp/pre_test_rhel.txt
+        content: "This is a test file on RHEL"
+        mode: 0644
+      when: ansible_facts.os_family == "RedHat"
 
-  - name: Stop httpd (RHEL)
-    service:
-      name: httpd
-      state: stopped
-    when: ansible_facts.os_family == "RedHat"
+    - name: Stop httpd (RHEL)
+      service:
+        name: httpd
+        state: stopped
+      when: ansible_facts.os_family == "RedHat"
 
-  - name: Run prehook command on Ubuntu
-    shell: "df -hT; ip a >> /tmp/prehookfile"
-    when: ansible_facts.os_family == "Debian"
+    - name: Run prehook command on Ubuntu
+      shell: "df -hT; ip a >> /tmp/prehookfile"
+      when: ansible_facts.os_family == "Debian"
+
+    - name: Create Test File on Windows
+      win_copy:
+        dest: C:\temp\pre_test_windows.txt
+        content: "This is a test file on Windows"
+      when: ansible_facts.os_family == "Windows"
+
+    - name: Stop Windows Service (Example)
+      win_service:
+        name: w32time
+        state: stopped
+      when: ansible_facts.os_family == "Windows"
