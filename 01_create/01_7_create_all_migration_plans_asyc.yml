@@ -53,128 +53,128 @@
         label: "{{ item.key }}"
 
     - name: Create migration plans in parallel
-      block:
-        - name: Create NetworkMap for {{ item.key | lower }}
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: forklift.konveyor.io/v1beta1
-              kind: NetworkMap
-              metadata:
-                name: "netmap-{{ item.key | lower }}"
-                namespace: "{{ mtv_namespace }}"
-              spec:
-                provider:
-                  source:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ source_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                    uid: "{{ source_provider_uid }}"
+      # Loop over each plan group and create necessary resources
+      - name: Create NetworkMap for {{ item.key | lower }}
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: NetworkMap
+            metadata:
+              name: "netmap-{{ item.key | lower }}"
+              namespace: "{{ mtv_namespace }}"
+            spec:
+              provider:
+                source:
+                  apiVersion: forklift.konveyor.io/v1beta1
+                  kind: Provider
+                  name: "{{ source_provider_name }}"
+                  namespace: "{{ mtv_namespace }}"
+                  uid: "{{ source_provider_uid }}"
+                destination:
+                  apiVersion: forklift.konveyor.io/v1beta1
+                  kind: Provider
+                  name: "{{ destination_provider_name }}"
+                  namespace: "{{ mtv_namespace }}"
+                  uid: "{{ destination_provider_uid }}"
+              map:
+                - source:
+                    id: "{{ source_networkmap_id }}"
                   destination:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ destination_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                    uid: "{{ destination_provider_uid }}"
-                map:
-                  - source:
-                      id: "{{ source_networkmap_id }}"
-                    destination:
-                      name: "{{ target_networkmap }}"
-                      namespace: "{{ target_network_namespace }}"
-                      type: multus
-          async: 300
-          poll: 0
-          register: networkmap_job
+                    name: "{{ target_networkmap }}"
+                    namespace: "{{ target_network_namespace }}"
+                    type: multus
+        async: 300
+        poll: 0
+        register: networkmap_job
 
-        - name: Create StorageMap for {{ item.key | lower }}
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: forklift.konveyor.io/v1beta1
-              kind: StorageMap
-              metadata:
-                name: "storagemap-{{ item.key | lower }}"
-                namespace: "{{ mtv_namespace }}"
-              spec:
-                provider:
-                  source:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ source_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                    uid: "{{ source_provider_uid }}"
+      - name: Create StorageMap for {{ item.key | lower }}
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: StorageMap
+            metadata:
+              name: "storagemap-{{ item.key | lower }}"
+              namespace: "{{ mtv_namespace }}"
+            spec:
+              provider:
+                source:
+                  apiVersion: forklift.konveyor.io/v1beta1
+                  kind: Provider
+                  name: "{{ source_provider_name }}"
+                  namespace: "{{ mtv_namespace }}"
+                  uid: "{{ source_provider_uid }}"
+                destination:
+                  apiVersion: forklift.konveyor.io/v1beta1
+                  kind: Provider
+                  name: "{{ destination_provider_name }}"
+                  namespace: "{{ mtv_namespace }}"
+                  uid: "{{ destination_provider_uid }}"
+              map:
+                - source:
+                    id: "{{ source_storagemap_id }}"
                   destination:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ destination_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                    uid: "{{ destination_provider_uid }}"
-                map:
-                  - source:
-                      id: "{{ source_storagemap_id }}"
-                    destination:
-                      storageClass: "{{ target_storage }}"
-          async: 300
-          poll: 0
-          register: storagemap_job
+                    storageClass: "{{ target_storage }}"
+        async: 300
+        poll: 0
+        register: storagemap_job
 
-        - name: Create Migration Plan for {{ item.key | lower }}
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: forklift.konveyor.io/v1beta1
-              kind: Plan
-              metadata:
-                name: "{{ item.key }}"
-                namespace: "{{ mtv_namespace }}"
-              spec:
-                provider:
-                  source:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ source_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                    uid: "{{ source_provider_uid }}"
-                  destination:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: Provider
-                    name: "{{ destination_provider_name }}"
-                    namespace: "{{ mtv_namespace }}"
-                    uid: "{{ destination_provider_uid }}"
-                map:
-                  network:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: NetworkMap
-                    name: "netmap-{{ item.key | lower }}"
-                    namespace: "{{ mtv_namespace }}"
-                  storage:
-                    apiVersion: forklift.konveyor.io/v1beta1
-                    kind: StorageMap
-                    name: "storagemap-{{ item.key | lower }}"
-                    namespace: "{{ mtv_namespace }}"
-                targetNamespace: "{{ item.value.rows[0]['Target Namespace'] }}"
-                pvcNameTemplateUseGenerateName: true
-                preserveStaticIPs: true
-                migrateSharedDisks: true
-                warm: "{{ item.value.is_warm }}"
-                vms: "{{ item.value.vms }}"
-          async: 300
-          poll: 0
-          register: plan_job
+      - name: Create Migration Plan for {{ item.key | lower }}
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: forklift.konveyor.io/v1beta1
+            kind: Plan
+            metadata:
+              name: "{{ item.key }}"
+              namespace: "{{ mtv_namespace }}"
+            spec:
+              provider:
+                source:
+                  apiVersion: forklift.konveyor.io/v1beta1
+                  kind: Provider
+                  name: "{{ source_provider_name }}"
+                  namespace: "{{ mtv_namespace }}"
+                  uid: "{{ source_provider_uid }}"
+                destination:
+                  apiVersion: forklift.konveyor.io/v1beta1
+                  kind: Provider
+                  name: "{{ destination_provider_name }}"
+                  namespace: "{{ mtv_namespace }}"
+                  uid: "{{ destination_provider_uid }}"
+              map:
+                network:
+                  apiVersion: forklift.konveyor.io/v1beta1
+                  kind: NetworkMap
+                  name: "netmap-{{ item.key | lower }}"
+                  namespace: "{{ mtv_namespace }}"
+                storage:
+                  apiVersion: forklift.konveyor.io/v1beta1
+                  kind: StorageMap
+                  name: "storagemap-{{ item.key | lower }}"
+                  namespace: "{{ mtv_namespace }}"
+              targetNamespace: "{{ item.value.rows[0]['Target Namespace'] }}"
+              pvcNameTemplateUseGenerateName: true
+              preserveStaticIPs: true
+              migrateSharedDisks: true
+              warm: "{{ item.value.is_warm }}"
+              vms: "{{ item.value.vms }}"
+        async: 300
+        poll: 0
+        register: plan_job
 
-        - name: Wait for all tasks to complete
-          async_status:
-            jid: "{{ item.ansible_job_id }}"
-          loop:
-            - "{{ networkmap_job }}"
-            - "{{ storagemap_job }}"
-            - "{{ plan_job }}"
-          register: job_results
-          until: job_results.results | selectattr('finished', 'defined') | length == 3
-          retries: 10
-          delay: 10
+      - name: Wait for all tasks to complete
+        async_status:
+          jid: "{{ item.ansible_job_id }}"
+        loop:
+          - "{{ networkmap_job }}"
+          - "{{ storagemap_job }}"
+          - "{{ plan_job }}"
+        register: job_results
+        until: job_results.results | selectattr('finished', 'defined') | length == 3
+        retries: 10
+        delay: 10
 
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
