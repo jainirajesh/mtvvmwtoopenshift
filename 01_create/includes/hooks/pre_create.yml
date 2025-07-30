@@ -35,19 +35,10 @@
       content: "{{ ssh_credentials.resources[0].data.key | b64decode }}"
       mode: 0600
 
-  - name: Add host with explicit conditional username
-    add_host:
+  - add_host:
       name: "{{ workload.vm.ipaddress }}"
-      ansible_user: >
-        {% if ansible_facts['distribution'] == 'RedHat' %}
-          root
-        {% elif ansible_facts['distribution'] == 'Ubuntu' %}
-          ocp
-        {% else %}
-          default_user
-        {% endif %}
-      groups:
-        - vms
+      ansible_user: ocp
+      groups: vms
 
   - name: Set Workload & Plan fact
     set_fact:
