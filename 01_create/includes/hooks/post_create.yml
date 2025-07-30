@@ -54,21 +54,36 @@
       msg: "{{ plan }}"
 
 - hosts: vms
-  gather_facts: no
+  gather_facts: yes  # We need facts to determine OS type
   vars:
     ansible_ssh_private_key_file: ~/.ssh/id_rsa
-  tasks:  
+  tasks:
   - name: Wait for VM to boot
     wait_for_connection:
       timeout: 600
 
-  - name: Start httpd
+  # RHEL Specific Tasks
+  - name: Start httpd on RHEL
     service:
       name: httpd
       state: started
-      
-  - name: Create Test File
+    when: ansible_facts.os_family == "RedHat"
+
+  - name: Create Test File for RHEL
     copy:
-      dest: /test2.txt
-      content: "Hello World"
+      dest: /post_test_rhel.txt
+      content: "This is a test file on RHEL"
       mode: 0644
+    when: ansible_facts.os_family == "RedHat"
+
+  # Ubuntu Specific Tasks
+  - name: Create Test File for Ubuntu
+    copy:
+      dest: /post_test_ubuntu.txt
+      content: "This is a test file on Ubuntu"
+      mode: 0644
+    when: ansible_facts.os_family == "Debian"
+
+  - name: Run prehook command on Ubuntu
+    shell: "df -hT; ip a >> /tmp/posthookfile"
+    when: ansible_facts.os_family == "Debian"
