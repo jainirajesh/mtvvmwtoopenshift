@@ -78,12 +78,6 @@
       state: stopped
     when: ansible_facts.os_family == "RedHat"
 
-  - name: Stop apache2 (Ubuntu)
-    service:
-      name: apache2
-      state: stopped
-    when: ansible_facts.os_family == "Debian"
-
   - name: Run prehook command on Ubuntu
     shell: "df -hT; ip a >> /tmp/prehookfile"
     when: ansible_facts.os_family == "Debian"
