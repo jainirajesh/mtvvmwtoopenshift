@@ -60,14 +60,14 @@
   tasks:
   - name: Create Test File for Ubuntu
     copy:
-      dest: /tmp/test_ubuntu.txt
+      dest: /tmp/pre_test_ubuntu.txt
       content: "This is a test file on Ubuntu"
       mode: 0644
     when: ansible_facts.os_family == "Debian"
 
   - name: Create Test File for RHEL
     copy:
-      dest: /tmp/test_rhel.txt
+      dest: /tmp/pre_test_rhel.txt
       content: "This is a test file on RHEL"
       mode: 0644
     when: ansible_facts.os_family == "RedHat"
