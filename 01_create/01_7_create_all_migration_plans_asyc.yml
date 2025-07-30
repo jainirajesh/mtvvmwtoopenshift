@@ -175,6 +175,7 @@
           until: job_results.results | selectattr('finished', 'defined') | length == 3
           retries: 10
           delay: 10
+
       loop: "{{ plans_with_vms | dict2items }}"
       loop_control:
         loop_var: item
