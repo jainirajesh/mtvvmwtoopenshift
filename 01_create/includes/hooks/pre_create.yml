@@ -59,6 +59,7 @@
         msg: "{{ plan }}"
 
 - hosts: vms
+  gather_facts: true
   vars:
     ansible_ssh_private_key_file: ~/.ssh/id_rsa
 
@@ -91,10 +92,4 @@
       win_copy:
         dest: C:\temp\pre_test_windows.txt
         content: "This is a test file on Windows"
-      when: ansible_facts.os_family == "Windows"
-
-    - name: Stop Windows Service (Example)
-      win_service:
-        name: w32time
-        state: stopped
       when: ansible_facts.os_family == "Windows"
