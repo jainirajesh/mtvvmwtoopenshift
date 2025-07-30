@@ -1,58 +1,50 @@
 ---
-- name: Send Ansible event to Zabbix using API
+- name: Send dummy data to Zabbix API
   hosts: localhost
   gather_facts: false
 
   vars:
     zabbix_api_url: "http://193.7.1.225/zabbix/api_jsonrpc.php"
     zabbix_user: "Admin"
-    zabbix_pass: "zabbix"
+    zabbix_password: "zabbix"
     zabbix_host: "Migration Automation"
-    zabbix_item_key: "ansible.event"
-    event_message: "This is a test event from Ansible AAP."
+    dummy_key: "ansible.migration.status"
+    dummy_value: "cutover_started"
 
   tasks:
-
-    - name: Get auth token
-      uri:
-        url: "{{ zabbix_api_url }}"
-        method: POST
-        return_content: true
-        headers:
-          Content-Type: "application/json"
-        body_format: json
-        body:
-          jsonrpc: "2.0"
-          method: "user.login"
-          params:
-            username: "{{ zabbix_user }}"
-            password: "{{ zabbix_pass }}"
-          id: 1
+    - name: Login to Zabbix API
+      community.zabbix.zabbix_api:
+        server_url: "{{ zabbix_api_url }}"
+        login_user: "{{ zabbix_user }}"
+        login_password: "{{ zabbix_password }}"
+        method: user.login
+        params: {}
       register: login_response
 
     - name: Set auth token
       set_fact:
-        zabbix_auth_token: "{{ login_response.json.result }}"
+        zabbix_auth_token: "{{ login_response.result }}"
 
-    - name: Send data to Zabbix
+    - name: Send data using item.update or event.create
       uri:
         url: "{{ zabbix_api_url }}"
         method: POST
-        return_content: true
+        body_format: json
         headers:
           Content-Type: "application/json"
-        body_format: json
-        body:
-          jsonrpc: "2.0"
-          method: "history.create"
-          params:
-            host: "{{ zabbix_host }}"
-            key: "{{ zabbix_item_key }}"
-            value: "{{ event_message }}"
-          auth: "{{ zabbix_auth_token }}"
-          id: 2
-      register: send_response
+        body: |
+          {
+            "jsonrpc": "2.0",
+            "method": "event.acknowledge",
+            "params": {
+              "eventids": ["12345"],
+              "message": "Migration Cutover Started by Ansible"
+            },
+            "auth": "{{ zabbix_auth_token }}",
+            "id": 1
+          }
+      register: result
 
-    - name: Show response
+    - name: Show result
       debug:
-        var: send_response.json
+        var: result.json
