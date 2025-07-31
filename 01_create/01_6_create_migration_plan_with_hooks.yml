@@ -1,6 +1,6 @@
 - name: Create multiple migration plans from CSV
   hosts: localhost
-  gather_facts: false
+  gather_facts: true
 
   vars_files:
     - ../vars.yaml
