@@ -37,7 +37,7 @@
 
   - add_host:
       name: "{{ workload.vm.ipaddress }}"
-      ansible_user: ocp
+      ansible_user: root
       groups: vms
 
   - name: Set Workload & Plan fact
