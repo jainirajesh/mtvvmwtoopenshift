@@ -65,4 +65,4 @@
       mode: 0644
 
   - name: Run prehook command on Ubuntu
-    shell: "df -hT; ip a >> /tmp/prehookfile"
+    shell: "df -hT;ip a >>/tmp/prehookfile"
