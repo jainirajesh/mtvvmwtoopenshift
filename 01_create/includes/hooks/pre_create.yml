@@ -66,4 +66,3 @@
 
   - name: Run prehook command on Ubuntu
     shell: "df -hT; ip a >> /tmp/prehookfile"
-    when: ansible_facts.os_family == "Debian"
