@@ -1,3 +1,3 @@
 Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS,Plan Name,Target Namespace,Target Storage,Cold or Warm,Keep IP,Sync Time
 1,win-demo-02,vm-31975,2,group-2,1,prod,Microsoft Windows Server 2019 (64-bit),win-plan-170731,win-ns31,lvms-vg1,warm,yes,2025-07-17 15:37:30
-2,1,rhel-8,vm-30818,1,group-1,1,prod,Ubuntu Linux (64-bit),rhel-plan-31077,linux-ns31,lvms-vg1,cold,yes,2025-07-30 16:31:00
+2,rhel-8,vm-30818,1,group-1,1,prod,Ubuntu Linux (64-bit),rhel-plan-31077,linux-ns31,lvms-vg1,cold,yes,2025-07-30 16:31:00
