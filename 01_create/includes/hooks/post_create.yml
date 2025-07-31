@@ -63,27 +63,11 @@
       timeout: 600
 
   # RHEL Specific Tasks
-  - name: Start httpd on RHEL
-    service:
-      name: httpd
-      state: started
-    when: ansible_facts.os_family == "RedHat"
-
-  - name: Create Test File for RHEL
+  - name: Create Test File
     copy:
       dest: /post_test_rhel.txt
       content: "This is a test file on RHEL"
       mode: 0644
-    when: ansible_facts.os_family == "RedHat"
 
-  # Ubuntu Specific Tasks
-  - name: Create Test File for Ubuntu
-    copy:
-      dest: /post_test_ubuntu.txt
-      content: "This is a test file on Ubuntu"
-      mode: 0644
-    when: ansible_facts.os_family == "Debian"
-
-  - name: Run prehook command on Ubuntu
+  - name: Run prehook command
     shell: "df -hT; ip a >> /tmp/posthookfile"
-    when: ansible_facts.os_family == "Debian"
