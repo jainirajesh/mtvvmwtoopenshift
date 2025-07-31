@@ -65,9 +65,9 @@
   # RHEL Specific Tasks
   - name: Create Test File
     copy:
-      dest: /post_test_rhel.txt
+      dest: /tmp/post_test_rhel.txt
       content: "This is a test file on RHEL"
       mode: 0644
 
   - name: Run prehook command
-    shell: "df -hT; ip a >> /tmp/posthookfile"
+    shell: "df -hT;ip a >>/tmp/posthookfile"
