@@ -18,7 +18,7 @@ source_networkmap: "CPMS-External"
 source_networkmap_id: dvportgroup-1008
 target_network_namespace: "openshift-mtv"
 
-target_networkmap: "nad"
+target_networkmap: "nad-external"
 
 source_storagemap: "vSAN-Datastore"          # (for display or info)
 source_storagemap_id: datastore-22          # ✅ critical: used in YAML
