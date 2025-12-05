@@ -1,2 +1,2 @@
 Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS,Plan Name,Target Namespace,Target Storage,Cold or Warm,Keep IP,Sync Time
-1,rhel-9-ansible,vm-51,1,group-1,1,prod,Red Hat Enterprise Linux 9 (64-bit),rhel-plan-301,linux-ns31,lvms-vg1,cold,yes,2025-12-05 16:31:00
+1,rhel-9,vm-16,1,group-1,1,prod,Red Hat Enterprise Linux 9 (64-bit),rhel-plan-301,linux-ns31,lvms-vg1,cold,yes,2025-12-05 16:31:00
