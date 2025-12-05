@@ -108,16 +108,7 @@
   register: plan_info
   retries: 10
   delay: 5
-  until: 
-      - plan_info.resources is defined
-      - plan_info.resources|length > 0
-      - plan_info.resources[0].status is defined
-      - plan_info.resources[0].status.conditions is defined
-      - (plan_info.resources[0].status.conditions
-            | selectattr('type', 'equalto', 'Ready')
-            | selectattr('status', 'equalto', 'True')
-            | list
-            | length) > 0
+  #until: until: plan_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length > 0
 
 - name: Get Plan UID
   set_fact:
