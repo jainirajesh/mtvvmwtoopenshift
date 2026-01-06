@@ -4,23 +4,23 @@
   gather_facts: no
   vars:
     # Source vCenter
-    source_vcenter_host: "source-vcenter.local"
-    source_vcenter_user: "your-username"
-    source_vcenter_password: "your-password"
+    source_vcenter_host: "48.32.86.13"
+    source_vcenter_user: "administrator@vsphere.local"
+    source_vcenter_password: "Password@123"
     
     # Destination vCenter
-    dest_vcenter_host: "destination-vcenter.local"
-    dest_vcenter_user: "your-username"
-    dest_vcenter_password: "your-password"
+    dest_vcenter_host: "48.32.86.13"
+    dest_vcenter_user: "administrator@vsphere.local"
+    dest_vcenter_password: "Password@123"
     
     # Shared Datastore (must be accessible by both vCenters)
-    shared_datastore: "shared-datastore-name"
+    shared_datastore: "datastore1"
     
     # VM details
-    vm_name: "your-vm-name"
-    destination_datacenter: "your-datacenter"
-    destination_cluster: "your-cluster"
-    destination_resource_pool: "your-resource-pool"
+    vm_name: "rhel-9-ansible"
+    destination_datacenter: "SG-DC"
+    destination_cluster: "cscorkeecsclab.socgen"
+    destination_resource_pool: "cscorkeecsclab.socgen"
 
   tasks:
     - name: Check if the shared datastore exists in destination vCenter
@@ -83,3 +83,4 @@
         vm_id: "{{ vm_name }}"
         state: powered_on
       delegate_to: localhost
+
