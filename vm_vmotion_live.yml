@@ -1,0 +1,45 @@
+---
+- name: Live migrate VM from one vCenter to another
+  hosts: localhost
+  gather_facts: no
+  vars:
+    # Source vCenter details
+    source_vcenter_host: "source-vcenter.local"
+    source_vcenter_user: "your-username"
+    source_vcenter_password: "your-password"
+    
+    # Destination vCenter details
+    dest_vcenter_host: "destination-vcenter.local"
+    dest_vcenter_user: "your-username"
+    dest_vcenter_password: "your-password"
+    vm_name: "your-vm-name"
+    destination_datacenter: "your-datacenter"
+    destination_cluster: "your-cluster"
+    destination_resource_pool: "your-resource-pool"
+  
+  tasks:
+    - name: Check if VM exists in source vCenter
+      community.vmware.vm_vm_info:
+        hostname: "{{ source_vcenter_host }}"
+        username: "{{ source_vcenter_user }}"
+        password: "{{ source_vcenter_password }}"
+        validate_certs: no
+        vm_name: "{{ vm_name }}"
+      register: source_vm_info
+      delegate_to: localhost
+
+    - name: Perform live migration (vMotion) to destination vCenter
+      community.vmware.vm_vmotion:
+        hostname: "{{ source_vcenter_host }}"
+        username: "{{ source_vcenter_user }}"
+        password: "{{ source_vcenter_password }}"
+        validate_certs: no
+        vm_id: "{{ source_vm_info.virtual_machines[0].id }}"
+        dest_hostname: "{{ dest_vcenter_host }}"
+        dest_username: "{{ dest_vcenter_user }}"
+        dest_password: "{{ dest_vcenter_password }}"
+        dest_datacenter: "{{ destination_datacenter }}"
+        dest_cluster: "{{ destination_cluster }}"
+        dest_resource_pool: "{{ destination_resource_pool }}"
+        state: powered_on
+      delegate_to: localhost

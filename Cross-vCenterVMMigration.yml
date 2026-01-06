@@ -1,0 +1,85 @@
+---
+- name: Prepare vCenter environment and migrate VM
+  hosts: localhost
+  gather_facts: no
+  vars:
+    # Source vCenter
+    source_vcenter_host: "source-vcenter.local"
+    source_vcenter_user: "your-username"
+    source_vcenter_password: "your-password"
+    
+    # Destination vCenter
+    dest_vcenter_host: "destination-vcenter.local"
+    dest_vcenter_user: "your-username"
+    dest_vcenter_password: "your-password"
+    
+    # Shared Datastore (must be accessible by both vCenters)
+    shared_datastore: "shared-datastore-name"
+    
+    # VM details
+    vm_name: "your-vm-name"
+    destination_datacenter: "your-datacenter"
+    destination_cluster: "your-cluster"
+    destination_resource_pool: "your-resource-pool"
+
+  tasks:
+    - name: Check if the shared datastore exists in destination vCenter
+      community.vmware.vmware_datastore_info:
+        hostname: "{{ dest_vcenter_host }}"
+        username: "{{ dest_vcenter_user }}"
+        password: "{{ dest_vcenter_password }}"
+        validate_certs: no
+      register: dest_datastore_info
+      delegate_to: localhost
+
+    - name: Verify shared datastore is available in destination vCenter
+      fail:
+        msg: "Shared datastore not found in destination vCenter"
+      when: shared_datastore not in dest_datastore_info.datastores | map(attribute='name') | list
+
+    - name: Get VM info from source vCenter
+      community.vmware.vm_vm_info:
+        hostname: "{{ source_vcenter_host }}"
+        username: "{{ source_vcenter_user }}"
+        password: "{{ source_vcenter_password }}"
+        validate_certs: no
+        vm_name: "{{ vm_name }}"
+      register: source_vm_info
+      delegate_to: localhost
+
+    - name: Prepare VM for vMotion by ensuring compatibility
+      community.vmware.vm_vm_power:
+        hostname: "{{ source_vcenter_host }}"
+        username: "{{ source_vcenter_user }}"
+        password: "{{ source_vcenter_password }}"
+        validate_certs: no
+        vm_id: "{{ source_vm_info.virtual_machines[0].id }}"
+        state: powered_off
+      delegate_to: localhost
+
+    - name: Migrate VM to destination vCenter with shared storage and network compatibility
+      community.vmware.vm_vmotion:
+        hostname: "{{ source_vcenter_host }}"
+        username: "{{ source_vcenter_user }}"
+        password: "{{ source_vcenter_password }}"
+        validate_certs: no
+        vm_id: "{{ source_vm_info.virtual_machines[0].id }}"
+        dest_hostname: "{{ dest_vcenter_host }}"
+        dest_username: "{{ dest_vcenter_user }}"
+        dest_password: "{{ dest_vcenter_password }}"
+        dest_datacenter: "{{ destination_datacenter }}"
+        dest_cluster: "{{ destination_cluster }}"
+        dest_resource_pool: "{{ destination_resource_pool }}"
+        dest_datastore: "{{ shared_datastore }}"
+        state: powered_on
+      delegate_to: localhost
+
+    - name: Ensure VM is powered on in destination vCenter
+      community.vmware.vm_vm_power:
+        hostname: "{{ dest_vcenter_host }}"
+        username: "{{ dest_vcenter_user }}"
+        password: "{{ dest_vcenter_password }}"
+        validate_certs: no
+        vm_id: "{{ vm_name }}"
+        state: powered_on
+      delegate_to: localhost

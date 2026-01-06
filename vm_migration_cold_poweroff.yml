@@ -1,0 +1,73 @@
+---
+- name: Migrate VM from one vCenter to another
+  hosts: localhost
+  gather_facts: no
+  vars:
+    # Source vCenter
+    source_vcenter_host: "source-vcenter.local"
+    source_vcenter_user: "your-username"
+    source_vcenter_password: "your-password"
+    source_vm_name: "VM_Name"
+    
+    # Destination vCenter
+    dest_vcenter_host: "destination-vcenter.local"
+    dest_vcenter_user: "your-username"
+    dest_vcenter_password: "your-password"
+    dest_datacenter: "your-datacenter"
+    dest_datastore: "your-datastore"
+    dest_cluster: "your-cluster"
+  
+  tasks:
+    - name: Gather info about VM in source vCenter
+      community.vmware.vm_vm_info:
+        hostname: "{{ source_vcenter_host }}"
+        username: "{{ source_vcenter_user }}"
+        password: "{{ source_vcenter_password }}"
+        validate_certs: no
+      register: source_vm_info
+      delegate_to: localhost
+
+    - name: Power off VM in source vCenter before migration
+      community.vmware.vm_vm_power:
+        hostname: "{{ source_vcenter_host }}"
+        username: "{{ source_vcenter_user }}"
+        password: "{{ source_vcenter_password }}"
+        validate_certs: no
+        vm_id: "{{ source_vm_info.virtual_machines[0].id }}"
+        state: powered_off
+      delegate_to: localhost
+
+    - name: Clone VM from source vCenter to destination vCenter
+      community.vmware.vm_vm_clone:
+        hostname: "{{ dest_vcenter_host }}"
+        username: "{{ dest_vcenter_user }}"
+        password: "{{ dest_vcenter_password }}"
+        validate_certs: no
+        name: "{{ source_vm_name }}"
+        clone_name: "{{ source_vm_name }}-migrated"
+        cluster: "{{ dest_cluster }}"
+        datastore: "{{ dest_datastore }}"
+        folder: "{{ dest_datacenter }}/vm"
+        resource_pool: "{{ dest_cluster }}"
+        state: powered_on
+      delegate_to: localhost
+
+    - name: Power on VM in destination vCenter
+      community.vmware.vm_vm_power:
+        hostname: "{{ dest_vcenter_host }}"
+        username: "{{ dest_vcenter_user }}"
+        password: "{{ dest_vcenter_password }}"
+        validate_certs: no
+        vm_id: "{{ source_vm_name }}-migrated"
+        state: powered_on
+      delegate_to: localhost
+
+    - name: Delete the original VM in the source vCenter (optional)
+      community.vmware.vm_vm_delete:
+        hostname: "{{ source_vcenter_host }}"
+        username: "{{ source_vcenter_user }}"
+        password: "{{ source_vcenter_password }}"
+        validate_certs: no
+        vm_id: "{{ source_vm_info.virtual_machines[0].id }}"
+        state: absent
+      delegate_to: localhost
