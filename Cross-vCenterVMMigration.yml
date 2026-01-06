@@ -23,6 +23,12 @@
     destination_resource_pool: "cscorkeecsclab.socgen"
 
   tasks:
+    - name: List installed collections
+       ansible.builtin.command: ansible-galaxy collection list
+       register: collections
+
+    - debug:
+        var: collections.stdout
     - name: Check if the shared datastore exists in destination vCenter
       community.vmware.vmware_datastore_info:
         hostname: "{{ dest_vcenter_host }}"
@@ -83,4 +89,5 @@
         vm_id: "{{ vm_name }}"
         state: powered_on
       delegate_to: localhost
+
 
