@@ -38,7 +38,7 @@
       when: shared_datastore not in dest_datastore_info.datastores | map(attribute='name') | list
 
     - name: Get VM info from source vCenter
-      community.vmware.vm_vm_info:
+      community.vmware.vmware_vm_info:
         hostname: "{{ source_vcenter_host }}"
         username: "{{ source_vcenter_user }}"
         password: "{{ source_vcenter_password }}"
@@ -83,6 +83,7 @@
         vm_id: "{{ vm_name }}"
         state: powered_on
       delegate_to: localhost
+
 
 
 
