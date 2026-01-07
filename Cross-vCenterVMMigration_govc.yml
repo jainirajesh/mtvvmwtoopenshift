@@ -1,0 +1,39 @@
+---
+- name: Migrate VM using govc CLI
+  hosts: localhost
+  gather_facts: no
+  vars:
+    source_vcenter: "48.32.86.13"
+    target_vcenter: "48.32.86.13"
+    source_vm: "rhel-9-ansible"
+    target_vm: "rhel-9-ansible-Migrated"
+    target_datacenter: "SG-DC"
+    target_cluster: "cscorkeecsclab.socgen"
+    target_datastore: "datastore1"
+    target_network: "VM Network"
+    govc_user: "administrator@vsphere.local"
+    govc_pass: "Password@123"
+    govc_insecure: "true"
+
+  tasks:
+
+    - name: Clone VM using govc
+      ansible.builtin.shell: |
+        govc vm.clone -vm "{{ source_vm }}" -ds "{{ target_datastore }}" \
+        -pool "{{ target_cluster }}" -folder "/{{ target_datacenter }}/vm" \
+        -on=false "{{ target_vm }}"
+      environment:
+        GOVC_URL: "{{ target_vcenter }}"
+        GOVC_USERNAME: "{{ govc_user }}"
+        GOVC_PASSWORD: "{{ govc_pass }}"
+        GOVC_INSECURE: "{{ govc_insecure }}"
+      register: clone_result
+
+    - name: Power on the cloned VM
+      ansible.builtin.shell: govc vm.power -on "{{ target_vm }}"
+      environment:
+        GOVC_URL: "{{ target_vcenter }}"
+        GOVC_USERNAME: "{{ govc_user }}"
+        GOVC_PASSWORD: "{{ govc_pass }}"
+        GOVC_INSECURE: "{{ govc_insecure }}"
+      register: power_result
