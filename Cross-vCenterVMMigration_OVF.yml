@@ -1,0 +1,41 @@
+---
+- name: Migrate VM between vCenters using OVF Tool
+  hosts: localhost
+  gather_facts: no
+  vars:
+    source_vcenter: "48.32.86.13"
+    source_user: "administrator@vsphere.local"
+    source_pass: "Password@123"
+    target_vcenter: "48.32.86.13"
+    target_user: "administrator@vsphere.local"
+    target_pass: "Password@123"
+    source_vm_name: "rhel-9-ansible"
+    target_vm_name: "rhel-9-ansible-Migrated"
+    ova_path: "/tmp/{{ source_vm_name }}.ova"
+
+  tasks:
+
+    - name: Export VM from source vCenter
+      ansible.builtin.shell: |
+        ovftool --noSSLVerify \
+        vi://{{ source_user }}:{{ source_pass }}@{{ source_vcenter }}/{{ source_vm_name }} \
+        {{ ova_path }}
+      register: export_result
+      ignore_errors: false
+
+    - name: Show export result
+      ansible.builtin.debug:
+        var: export_result.stdout
+
+    - name: Import VM to target vCenter
+      ansible.builtin.shell: |
+        ovftool --noSSLVerify \
+        --name={{ target_vm_name }} \
+        {{ ova_path }} \
+        vi://{{ target_user }}:{{ target_pass }}@{{ target_vcenter }}/
+      register: import_result
+      ignore_errors: false
+
+    - name: Show import result
+      ansible.builtin.debug:
+        var: import_result.stdout
