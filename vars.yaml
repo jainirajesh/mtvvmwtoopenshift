@@ -1,8 +1,8 @@
 # vars.yaml
 
-vcenter_hostname: "{{ lookup('env', 'VCENTER_HOSTNAME') }}"
-vcenter_username: "{{ lookup('env', 'VCENTER_USERNAME') }}"
-vcenter_password: "{{ lookup('env', 'VCENTER_PASSWORD') }}"
+vcenter_hostname: "10.118.161.72"
+vcenter_username: "administrator@vsphere.local"
+vcenter_password: "Welcome@123"
 
 mtv_namespace: "openshift-mtv"
 source_provider_name: "vmware"
