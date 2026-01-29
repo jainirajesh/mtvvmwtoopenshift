@@ -6,20 +6,20 @@ vcenter_password: "{{ lookup('env', 'VCENTER_PASSWORD') }}"
 
 mtv_namespace: "openshift-mtv"
 source_provider_name: "vmware"
-source_provider_uid: "c9576094-326d-4587-87e6-2b6fd6d65b92"
+source_provider_uid: "e93234a4-7d75-42c5-adfb-8b36d4bd9002"
 
 destination_provider_name: "host"
-destination_provider_uid: "c9b08664-6fc2-47bd-9773-7bbacb1902c7"
+destination_provider_uid: "60123db7-d604-4c82-849f-b483c0b780aa"
 
-network_map_name: "test-networkmap"
-storage_map_name: "test-storagemap"
+network_map_name: "lab-ex-network"
+storage_map_name: "lvms-vg1"
 
-source_networkmap: "CSC-internal"
-source_networkmap_id: dvportgroup-1008
+source_networkmap: "VM Network"
+source_networkmap_id: network-1158
 target_network_namespace: "openshift-mtv"
 
-target_networkmap: "nad-internal"
+target_networkmap: "lab-ex-network"
 
-source_storagemap: "datastore1"          # (for display or info)
-source_storagemap_id: datastore-22          # ✅ critical: used in YAML
+source_storagemap: "Shared_Datastore"          # (for display or info)
+source_storagemap_id: datastore-1163          # ✅ critical: used in YAML
 target_storage: lvms-vg1
