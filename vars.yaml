@@ -16,9 +16,9 @@ storage_map_name: "test-storagemap"
 
 source_networkmap: "VM Network"
 source_networkmap_id: network-1158
-target_network_namespace: "openshift-mtv"
+target_network_namespace: "default"
 
-target_networkmap: "default/nad-linux-external"
+target_networkmap: "nad-linux-external"
 
 source_storagemap: "Shared_Datastore"          # (for display or info)
 source_storagemap_id: datastore-1163          # ✅ critical: used in YAML
