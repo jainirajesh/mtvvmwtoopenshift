@@ -11,8 +11,8 @@ source_provider_uid: "e93234a4-7d75-42c5-adfb-8b36d4bd9002"
 destination_provider_name: "host"
 destination_provider_uid: "60123db7-d604-4c82-849f-b483c0b780aa"
 
-network_map_name: "br-ex-network"
-storage_map_name: "lvms-vg1"
+network_map_name: "test-networkmap"
+storage_map_name: "test-storagemap"
 
 source_networkmap: "VM Network"
 source_networkmap_id: network-1158
