@@ -1,2 +1,2 @@
 Original Order,RHOS Name,VM ID,ASMS,GM Cutover Sequence,Sub Group,Environment,OS,Plan Name,Target Namespace,Target Storage,Cold or Warm,Keep IP,Sync Time
-1,RHEL9,vm-5008,1,group-1,1,prod,Red Hat Enterprise Linux 9,rhel-plan-1,openshift-mtv,lvms-vg1,warm,yes,2026-01-01 15:37:00
+1,RHEL9,vm-5008,1,group-1,1,prod,Red Hat Enterprise Linux 9,rhel-plan-test-1,openshift-mtv,lvms-vg1,warm,yes,2026-01-01 15:37:00
